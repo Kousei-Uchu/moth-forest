@@ -169,6 +169,8 @@
         view: "top",
         organic: 0,
         underFade: 0.35,
+        /* real-world wingspan, tip to tip, in millimetres; 0 means "not set" (ecology then estimates) */
+        span: 0,
         fore: {
           len: 100,
           chord: 44,
@@ -528,6 +530,8 @@
         }
       };
       function constrain(o) {
+        /* wingspan: 0 (unset) or 8 to 320 mm; anything else is tidied up */
+        o.span = Number.isFinite(+o.span) && +o.span > 0 ? clamp(Math.round(+o.span), 8, 320) : 0;
         for (let n = 0; n < 2; n++)
           for (const sp_ of Object.values(TABS))
             walk(sp_, o, (s) => {
@@ -2747,6 +2751,26 @@
         }
         if (x.ant) m.antenna = { ...m.antenna, type: x.ant[0], color: x.ant[1] };
       }
+      /* Typical wingspans (mm, middle of the usual published range) for the named species. */
+      const PRESET_SPAN = {
+        "Rosy maple moth": 48,
+        "Luna moth": 100,
+        "Atlas moth": 250,
+        "Polyphemus moth": 125,
+        "Io moth": 62,
+        "Cinnabar moth": 37,
+        "Sunset moth": 80,
+        "Giant leopard moth": 75,
+        "Peppered moth": 52,
+        "Death’s-head hawkmoth": 110,
+        "Elephant hawkmoth": 55,
+        "Garden tiger moth": 62,
+        "Imperial moth": 110,
+        "Cecropia moth": 130,
+        "Buff-tip moth": 62,
+      };
+      for (const [n, s] of Object.entries(PRESET_SPAN))
+        if (MOTHS[n]) MOTHS[n].span = s;
       /* Shared with moth_screensaver.html: everything above this line is the rendering logic. */
       window.MothLib = { renderMoth, full, constrain, MOTHS, seedOf, randomMoth, CATS };
       /* Builder UI below only runs on moth_builder.html (so the screensaver can load this file safely). */
@@ -2815,6 +2839,47 @@
             b.classList.toggle("on", b.dataset.view === cur.view),
           );
       }
+      /* ---- wingspan and units ----
+         span is stored in millimetres (0 = not set). It is shown in cm or inches: inches by default only for
+         locales that use them (US, Liberia, Myanmar), otherwise cm. The choice is remembered on this device. */
+      const defaultUnit = () => {
+        try {
+          const l = (navigator.languages && navigator.languages[0]) || navigator.language || "";
+          return /-(US|LR|MM)\b/i.test(l) ? "in" : "cm";
+        } catch (e) {
+          return "cm";
+        }
+      };
+      let unit = defaultUnit();
+      try {
+        const u = localStorage.getItem("moth-unit");
+        if (u === "cm" || u === "in") unit = u;
+      } catch (e) {}
+      const mmToUnit = (mm) => (unit === "in" ? mm / 25.4 : mm / 10);
+      const unitToMm = (v) => Math.round(unit === "in" ? v * 25.4 : v * 10);
+      const spanText = (mm) =>
+        unit === "in"
+          ? `${(mm / 25.4).toFixed(1)} in (${(mm / 10).toFixed(1)} cm)`
+          : `${(mm / 10).toFixed(1)} cm (${(mm / 25.4).toFixed(1)} in)`;
+      function sizeHTML() {
+        const v = cur.span > 0 ? mmToUnit(cur.span).toFixed(unit === "in" ? 2 : 1) : "";
+        return `<fieldset class="size"><legend>Wingspan (tip to tip)</legend>
+ <div class="spanrow"><input id="spanin" type="number" inputmode="decimal" min="0" step="${unit === "in" ? 0.05 : 0.1}" value="${v}" placeholder="Auto" aria-label="Wingspan in ${unit === "in" ? "inches" : "centimetres"}"><span class="unit">${unit}</span>
+ <span class="seg"><button data-unit="cm"${unit === "cm" ? ' class="on"' : ""}>cm</button><button data-unit="in"${unit === "in" ? ' class="on"' : ""}>in</button></span></div>
+ <div class="row"><button id="spanauto">Auto (estimate from the body)</button></div>
+ <p class="note">Real size makes the Ecology tab far more specific. Leave it on Auto and it makes a rough guess and says so.</p></fieldset>`;
+      }
+      function setSpan(v) {
+        const n = parseFloat(v);
+        cur.span = Number.isFinite(n) && n > 0 ? Math.min(320, Math.max(8, unitToMm(n))) : 0;
+        draw();
+      }
+      function sizeLine() {
+        const el = $("#sizeline");
+        if (el)
+          el.textContent = cur.span > 0 ? `Wingspan ${spanText(cur.span)}` : "Wingspan not set (Ecology estimates one)";
+      }
+
       /* Ecology tab: text inferred from the current parameters (same moth, same text). */
       const escHTML = (s) =>
         String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
@@ -2822,7 +2887,7 @@
         if (!window.MothEcology)
           return `<p class="note">moth_ecology.js did not load.</p>`;
         try {
-          const r = window.MothEcology.describe(cur);
+          const r = window.MothEcology.describe(cur, { unit });
           return `<p class="note">Inferred from this moth's shape, colour and body, so it follows every slider. Same moth, same text.</p>
  <p class="eco-head">${escHTML(r.headline)}</p>
  ${r.sections.map((s) => `<h4 class="eco-h">${escHTML(s.title)}</h4><p class="eco-p">${escHTML(s.text)}</p>`).join("")}`;
@@ -2833,6 +2898,7 @@
       function draw() {
         const svg = renderMoth(cur, { free: true });
         $("#stage").innerHTML = svg;
+        sizeLine();
         if (tab === "Ecology") {
           /* keep the reader's scroll position while sliders elsewhere change the moth */
           const el = $("#panel"), y = el.scrollTop;
@@ -2853,10 +2919,15 @@
  <label><span>Seed — any text or number (Enter to load)</span><input id="seed" type="text" value="${seedText}" spellcheck="false" autocomplete="off"></label>
  <div class="row"><button id="go">Load seed</button><button id="rnd">🎲 Random seed</button></div>
  <p class="note">Seeds: 4,294,967,296 (2³²) per style; text is hashed into that space. “Any” mixes every style and also draws the named species presets (exact or as recoloured “cousins”). Current seed value: <b>${cur.seed}</b>.</p>
+ ${sizeHTML()}
  <label><span>Parameters (JSON, editable)</span><textarea id="js" rows="7"></textarea></label><button id="app">Apply JSON</button>
  <label><span>SVG output</span><textarea id="svg" rows="4" readonly></textarea></label>`;
         else if (tab === "Quiz") el.innerHTML = quizHTML();
         else if (tab === "Ecology") el.innerHTML = ecologyHTML();
+        else if (tab === "Info")
+          el.innerHTML = window.MothInfo
+            ? window.MothInfo.html()
+            : `<p class="note">moth_info.js did not load.</p>`;
         else el.innerHTML = build(TABS[tab]);
         document
           .querySelectorAll("#tabs button")
@@ -2882,7 +2953,7 @@
           load(m, "seed " + seedText + " · " + randomMoth.last);
         }
       };
-      $("#tabs").innerHTML = ["Species", "Quiz", "Ecology", ...Object.keys(TABS)]
+      $("#tabs").innerHTML = ["Species", "Quiz", "Ecology", ...Object.keys(TABS), "Info"]
         .map((t) => `<button data-t="${t}">${t}</button>`)
         .join("");
       $("#tabs").addEventListener("click", (e) => {
@@ -2909,7 +2980,10 @@
         sync();
         draw();
       };
-      P_.addEventListener("input", edit);
+      P_.addEventListener("input", (e) => {
+        if (e.target.id === "spanin") setSpan(e.target.value);
+        else edit(e);
+      });
       P_.addEventListener("change", (e) => {
         if (e.target.id === "pre") {
           if (e.target.value !== "") {
@@ -2932,6 +3006,19 @@
         const b = e.target.closest("button");
         if (!b) return;
         if (quizClick(b)) return;
+        if (b.dataset.unit) {
+          unit = b.dataset.unit;
+          try {
+            localStorage.setItem("moth-unit", unit);
+          } catch (err) {}
+          panel();
+          return;
+        }
+        if (b.id === "spanauto") {
+          cur.span = 0;
+          panel();
+          return;
+        }
         if (b.id === "go") loadSeed($("#seed").value);
         else if (b.id === "rnd")
           loadSeed(Math.floor(Math.random() * 4294967296));

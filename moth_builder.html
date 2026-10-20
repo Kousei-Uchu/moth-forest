@@ -7,6 +7,14 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <title>Moth Generator</title>
+    <script>
+      /* apply a saved light/dark choice before the page paints */
+      try {
+        var t = localStorage.getItem("moth-theme");
+        if (t === "light" || t === "dark")
+          document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
     <style>
       :root {
         box-sizing: border-box;
@@ -246,6 +254,313 @@
         gap: 6px;
         margin: 6px 0;
       }
+      /* ================= app theme: a lamplit field-guide look ================= */
+      :root {
+        --bg: #f1eadc;
+        --fg: #2b241b;
+        --card: #fffaf0;
+        --line: #dacbb0;
+        --acc: #8c5a24;
+        --mut: #7a6c58;
+        --lamp: 255, 196, 110; /* r, g, b of the lamp light */
+        --glow: 0.34;
+        --shade: #8c5a24;
+        --shade-dark: #6e4519;
+        --bulb: #ffe3a8;
+        --tint: rgba(140, 100, 50, 0.07);
+        --shadow: 0 1px 2px rgba(60, 40, 10, 0.08), 0 10px 30px rgba(60, 40, 10, 0.08);
+        --radius: 18px;
+        --serif: ui-serif, Georgia, "Times New Roman", serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #0f0d0a;
+          --fg: #efe6d6;
+          --card: #1a1611;
+          --line: #3a3124;
+          --acc: #f0b865;
+          --mut: #a39682;
+          --glow: 0.55;
+          --shade: #c98a3a;
+          --shade-dark: #8f5f22;
+          --bulb: #fff1c9;
+          --tint: rgba(240, 184, 101, 0.07);
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 40px rgba(0, 0, 0, 0.45);
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #0f0d0a;
+        --fg: #efe6d6;
+        --card: #1a1611;
+        --line: #3a3124;
+        --acc: #f0b865;
+        --mut: #a39682;
+        --glow: 0.55;
+        --shade: #c98a3a;
+        --shade-dark: #8f5f22;
+        --bulb: #fff1c9;
+        --tint: rgba(240, 184, 101, 0.07);
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 40px rgba(0, 0, 0, 0.45);
+      }
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(1100px 480px at 50% -12%, rgba(var(--lamp), calc(var(--glow) * 0.4)), transparent 70%),
+          var(--bg);
+      }
+      :focus-visible {
+        outline: 2px solid var(--acc);
+        outline-offset: 2px;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: 1300px;
+        margin: 0 auto;
+        padding: 14px 16px 0;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font: 600 21px/1 var(--serif);
+        letter-spacing: 0.01em;
+      }
+      .brand svg {
+        width: 32px;
+        height: 32px;
+        color: var(--acc);
+      }
+      .brand small {
+        font: 400 12px/1 system-ui, sans-serif;
+        color: var(--mut);
+        letter-spacing: 0.04em;
+        margin-left: 2px;
+      }
+      .top .grow {
+        flex: 1;
+      }
+      h1 {
+        font: 600 19px/1.2 var(--serif);
+        margin: 0 0 10px;
+      }
+      button {
+        border-radius: 999px;
+        padding: 6px 14px;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+      button:hover {
+        background: var(--tint);
+      }
+      button.on {
+        background: rgba(var(--lamp), 0.2);
+      }
+      .side {
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+      nav {
+        padding: 8px 0;
+        gap: 2px;
+      }
+      nav button {
+        margin: 0 8px;
+        border-radius: 10px;
+        border-left: 0;
+        padding: 9px 12px;
+      }
+      nav button.on {
+        background: rgba(var(--lamp), 0.2);
+      }
+      #panel {
+        scrollbar-width: thin;
+        padding: 12px 16px;
+      }
+      /* the case holding the moth, lit by two hanging lamps */
+      .case {
+        position: relative;
+        overflow: hidden;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+      #stage {
+        position: relative;
+        z-index: 1;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        padding-top: 44px;
+      }
+      .lamp {
+        position: absolute;
+        top: 0;
+        width: 58px;
+        pointer-events: none;
+      }
+      .lamp.l1 {
+        left: 8%;
+      }
+      .lamp.l2 {
+        right: 8%;
+      }
+      .lamp svg {
+        position: relative;
+        z-index: 2;
+        display: block;
+        width: 100%;
+        height: auto;
+        overflow: visible;
+      }
+      .lamp .cord {
+        stroke: var(--mut);
+        stroke-width: 1.5;
+      }
+      .lamp .shade {
+        fill: var(--shade);
+      }
+      .lamp .shade-in {
+        fill: var(--shade-dark);
+      }
+      .lamp .bulb {
+        fill: var(--bulb);
+      }
+      .lamp .glow {
+        position: absolute;
+        z-index: 0;
+        left: 50%;
+        top: 74px;
+        width: 380px;
+        height: 380px;
+        margin: -174px 0 0 -190px;
+        border-radius: 50%;
+        background: radial-gradient(
+          closest-side,
+          rgba(var(--lamp), var(--glow)),
+          rgba(var(--lamp), calc(var(--glow) * 0.35)) 48%,
+          transparent
+        );
+        animation: lampglow 7s ease-in-out infinite;
+      }
+      .lamp.l2 .glow {
+        animation-delay: -3.2s;
+      }
+      @keyframes lampglow {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        42% {
+          opacity: 0.82;
+        }
+        50% {
+          opacity: 0.95;
+        }
+        72% {
+          opacity: 0.88;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .lamp .glow {
+          animation: none;
+        }
+      }
+      .sizeline {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        font-size: 12px;
+        color: var(--mut);
+        padding: 0 0 10px;
+      }
+      /* wingspan control */
+      fieldset.size .spanrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 8px 0 4px;
+      }
+      fieldset.size input[type="number"] {
+        flex: 1;
+        min-width: 0;
+      }
+      .unit {
+        color: var(--mut);
+      }
+      .seg {
+        display: inline-flex;
+      }
+      .seg button {
+        border-radius: 0;
+        padding: 5px 11px;
+      }
+      .seg button:first-child {
+        border-radius: 999px 0 0 999px;
+      }
+      .seg button:last-child {
+        border-radius: 0 999px 999px 0;
+        margin-left: -1px;
+      }
+      /* ecology text */
+      .eco-head {
+        font: 600 17px/1.4 var(--serif);
+        color: var(--acc);
+        margin: 6px 0 14px;
+      }
+      .eco-h {
+        color: var(--mut);
+      }
+      .eco-p {
+        line-height: 1.6;
+      }
+      /* info tab */
+      .info-lead {
+        font: 500 17px/1.5 var(--serif);
+        margin: 6px 0 8px;
+      }
+      details.info-sec {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        margin: 8px 0;
+        overflow: hidden;
+        background: var(--card);
+      }
+      .info-sec summary {
+        cursor: pointer;
+        padding: 11px 14px;
+        font-weight: 600;
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .info-sec summary::-webkit-details-marker {
+        display: none;
+      }
+      .info-sec summary::after {
+        content: "+";
+        color: var(--acc);
+        font-weight: 700;
+      }
+      .info-sec[open] summary::after {
+        content: "\2212";
+      }
+      .info-sec[open] summary {
+        background: var(--tint);
+        border-bottom: 1px solid var(--line);
+      }
+      .info-body {
+        padding: 4px 14px 12px;
+      }
+      .info-body p,
+      .info-body li {
+        line-height: 1.55;
+      }
+      .info-body ul {
+        padding-left: 18px;
+      }
       @media (max-width: 820px) {
         .app {
           grid-template-columns: 1fr;
@@ -279,6 +594,18 @@
     </style>
   </head>
   <body>
+    <header class="top">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+          <path d="M16 9c-1 0-1.6 1-1.6 2.4V22c0 1.2.7 2 1.6 2s1.6-.8 1.6-2V11.4C17.6 10 17 9 16 9z" />
+          <path d="M14.2 12C11 7 6 5.5 3.5 7c-1.8 1.2-.8 5 1.2 8.2 1.6 2.6 5 4.2 7.8 3.6 1.6-.4 2-1.8 1.9-3.4-.1-1.4-.2-2.6-.2-3.4zM17.8 12c3.2-5 8.2-6.5 10.7-5 1.8 1.2.8 5-1.2 8.2-1.6 2.6-5 4.2-7.8 3.6-1.6-.4-2-1.8-1.9-3.4.1-1.4.2-2.6.2-3.4z" opacity=".85" />
+          <path d="M13.8 20.5c-2.2.2-5 2-5.6 4.2-.4 1.5.8 2.4 2.2 2 2.2-.6 3.6-3.2 3.8-5.2zM18.2 20.5c2.2.2 5 2 5.6 4.2.4 1.5-.8 2.4-2.2 2-2.2-.6-3.6-3.2-3.8-5.2z" opacity=".6" />
+        </svg>
+        <span>Moth Forest <small>Generator</small></span>
+      </div>
+      <span class="grow"></span>
+      <button id="themeb" type="button" aria-label="Switch between light and dark">Dark mode</button>
+    </header>
     <div class="app">
       <div id="stagewrap">
         <h1>Moth generator <span id="name"></span></h1>
@@ -291,7 +618,28 @@
           ><button id="pngb">Save PNG</button
           ><button id="rigb">Save rig SVG</button>
         </div>
-        <div id="stage"></div>
+        <div class="case">
+          <div class="lamp l1" aria-hidden="true">
+            <i class="glow"></i>
+            <svg viewBox="0 0 58 100">
+              <line class="cord" x1="29" y1="-400" x2="29" y2="40" />
+              <path class="shade" d="M9 78 L22 40 H36 L49 78 Z" />
+              <ellipse class="shade-in" cx="29" cy="78" rx="20" ry="4" />
+              <ellipse class="bulb" cx="29" cy="80" rx="8" ry="5" />
+            </svg>
+          </div>
+          <div class="lamp l2" aria-hidden="true">
+            <i class="glow"></i>
+            <svg viewBox="0 0 58 100">
+              <line class="cord" x1="29" y1="-400" x2="29" y2="40" />
+              <path class="shade" d="M9 78 L22 40 H36 L49 78 Z" />
+              <ellipse class="shade-in" cx="29" cy="78" rx="20" ry="4" />
+              <ellipse class="bulb" cx="29" cy="80" rx="8" ry="5" />
+            </svg>
+          </div>
+          <div id="stage"></div>
+          <div id="sizeline" class="sizeline"></div>
+        </div>
       </div>
       <div class="side">
         <nav id="tabs"></nav>
@@ -299,7 +647,32 @@
       </div>
     </div>
     <script src="moth_ecology.js"></script>
+    <script src="moth_info.js"></script>
     <script src="moth_builder.js"></script>
+    <script>
+      /* light/dark toggle: remembers the choice, otherwise follows the device */
+      (function () {
+        var root = document.documentElement,
+          btn = document.getElementById("themeb"),
+          mq = window.matchMedia("(prefers-color-scheme: dark)");
+        var isDark = function () {
+          var t = root.getAttribute("data-theme");
+          return t ? t === "dark" : mq.matches;
+        };
+        var label = function () {
+          btn.textContent = isDark() ? "Light mode" : "Dark mode";
+        };
+        btn.addEventListener("click", function () {
+          var next = isDark() ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          try {
+            localStorage.setItem("moth-theme", next);
+          } catch (e) {}
+          label();
+        });
+        label();
+      })();
+    </script>
 
   </body>
 </html>

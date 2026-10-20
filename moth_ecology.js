@@ -27,6 +27,29 @@
   /* weighted clause list: keep the strongest few, drop the weak ones */
   const top = (C, n, min) => C.filter(c => c.w >= (min == null ? .25 : min)).sort((a, b) => b.w - a.w).slice(0, n).map(c => c.t);
 
+  /* ---------------- real-world size: wingspan in millimetres ---------------- */
+  /* When the moth has no wingspan set, guess one from body bulk so the writing still has a size to work with. */
+  function estimateSpan(p) {
+    const B = p.body;
+    return Math.round(clamp(28 + (B.tw - 10) * 5.5 + (B.abdLen - 38) * .35, 25, 150));
+  }
+  /* "6.2 cm (2.4 in)" with the reader's preferred unit first */
+  function fmtSpan(mm, unit) {
+    const cm = r1(mm / 10), inch = r1(mm / 25.4);
+    return unit === 'in' ? `${inch} in (${cm} cm)` : `${cm} cm (${inch} in)`;
+  }
+  /* everyday objects, deliberately not coins or paper sizes so the comparison works in any country */
+  function sizeLike(mm) {
+    if (mm < 15) return 'smaller than a fingernail';
+    if (mm < 30) return 'about as wide as a thumb';
+    if (mm < 45) return 'somewhere between a thumb\u2019s width and a matchbox\u2019s length';
+    if (mm < 65) return 'about as wide as a matchbox is long';
+    if (mm < 95) return 'about the length of a bank card';
+    if (mm < 125) return 'about as wide as a CD';
+    if (mm < 180) return 'wider than a CD, closer to a side plate';
+    return 'close to a dinner plate across';
+  }
+
   /* ---------------- colour naming (hex -> a specific, human description) ---------------- */
   function parseHex(h) { h = String(h || '#888888').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
   function hsl(hex) {
@@ -107,6 +130,11 @@
     m.uran = m.tail > .3 && !m.feather && m.dark && m.contrast > .6;      // dark, tailed, high-contrast: sunset-moth type day-flier
     m.startle = m.hindEyes > 0 && m.foreEyes === 0 && !m.green;
     m.act = activity(m);
+    /* real size: the moth's own wingspan when set, otherwise an estimate that the writing admits to */
+    m.spanKnown = +p.span > 0;
+    m.spanMm = m.spanKnown ? +p.span : estimateSpan(p);
+    m.size = nrm(m.spanMm, 25, 140);                                  // 0 tiny, 1 huge
+    m.unit = 'cm';
     return m;
   }
 
@@ -213,6 +241,30 @@
     /* moisture */
     if (m.green || m.sat > .6) out.push(`Colour this vivid fades fast in dry sun and hard weather, so it implies shade and humidity rather than open ground.`);
     else if (a.k === 'arid' && m.pale && m.fuzz < .5) out.push(`A pale, sleek moth sheds heat well, which points to dry air and strong light.`);
+    return out.join(' ');
+  });
+
+  /* size: the one section that uses real-world scale (wingspan), so it can say things proportions alone cannot */
+  S('size', 'How big it is, and what that means', (m, p, R) => {
+    const mm = m.spanMm, out = [], big = mm >= 80, small = mm < 30, span = fmtSpan(mm, m.unit);
+    out.push(m.spanKnown
+      ? pick(R, [
+        `With a wingspan of ${span}, it is ${sizeLike(mm)}.`,
+        `Spread out tip to tip it measures ${span}, which is ${sizeLike(mm)}.`,
+        `At ${span} across the wings it is ${sizeLike(mm)}.`])
+      : `No wingspan has been set, so this is a guess: a body like this usually goes with roughly ${span}, which is ${sizeLike(mm)}. Set a real wingspan in the Species tab and this section stops guessing.`);
+    /* warming up: small bodies cool in moments, big flight muscles make real heat */
+    if (small) out.push(m.fuzz > .6
+      ? `A body this small loses heat almost as fast as it makes it. The ${m.coat} coat helps hold on to a little, but it still needs warm air or sunshine before it can fly at all.`
+      : `A body this small loses heat in moments and cannot warm itself by shivering, so it flies only when the air is already warm or the sun is on it.`);
+    else if (big) out.push(`Flight muscles this large generate real heat. After a minute of shivering it can fly in air that would ground a smaller moth, and it keeps that warmth for as long as it stays in motion.`);
+    else out.push(`At this size it can warm its flight muscles a little by shivering, but it is not insulated like a big moth, so a cold spell will keep it perched.`);
+    /* growing up */
+    if (mm >= 90) out.push(`A moth this large began as a caterpillar as long as a finger or more, which eats a huge amount of leaf. That points to a habitat with plenty of host trees and a growing season long enough to finish the job.`);
+    else if (mm < 22) out.push(`Moths this small often start life as caterpillars so tiny they live inside a leaf, tunnelling between its surfaces, rather than munching it from the edge.`);
+    /* getting around */
+    if (m.narrow > .55 && mm >= 55) out.push(`Long, narrow wings at this scale are built for covering ground, so it could range well beyond where it hatched.`);
+    else if (small) out.push(`Something this light is carried by every gust, so it stays low and in sheltered spots and tends not to travel far.`);
     return out.join(' ');
   });
 
@@ -354,7 +406,9 @@
   });
 
   S('confidence', 'How much of this is guesswork', (m, p, R) => {
-    const out = [`Absolute size is not stored in these parameters (the forewing is always 100 units), so every statement about bulk, flight and feeding comes from proportions, not from real wingspan.`];
+    const out = [m.spanKnown
+      ? `The wingspan you set (${fmtSpan(m.spanMm, m.unit)}) anchors the size, warmth and growth remarks, so those are on firmer ground. Bulk and flight style still come from proportions, since the drawing itself is always scaled to the same size.`
+      : `No wingspan is set, so every statement about size, bulk, flight and feeding comes from proportions and a guessed scale. Setting a real wingspan in the Species tab removes most of that guesswork.`];
     out.push(`Links like pale moths in dry places and fuzzy moths in the cold are well-supported tendencies with exceptions; the notion that colour reveals diet or season is much weaker, and some of the underlying research comes from butterflies.`);
     out.push(`Read this as the most plausible life for this exact body and palette, not as a fact: change a single colour or wing proportion in the builder and the story may shift.`);
     return out.join(' ');
@@ -363,13 +417,15 @@
   /*@@SECTIONS@@*/
 
   /* ---------------- public API ---------------- */
-  function describe(raw) {
-    const p = normalise(raw), m = measure(p), seed = h32(stable(raw && typeof raw === 'string' ? JSON.parse(raw) : raw));
+  function describe(raw, opts) {
+    const p = normalise(raw), m = measure(p);
+    m.unit = opts && opts.unit === 'in' ? 'in' : 'cm';             // display only; never changes the wording choices
+    const seed = h32(stable(raw && typeof raw === 'string' ? JSON.parse(raw) : raw));
     const sections = [];
     SECTIONS.forEach(s => { const text = s.build(m, p, rng(seed ^ h32(s.id))); if (text) sections.push({ id: s.id, title: s.title, text }); });
     const hab = habitat(m);
     const lin = lineage(m), md = { day: 'by day', dusk: 'at dusk and dawn', night: 'at night' }[m.act.mode];
-    return { headline: `${an(m.foreName + ' ' + lin)} that probably flies ${md} in ${hab[0].n}.`, sections, facts: { lineage: lin, strategy: strategy(m).main, biome: hab[0].k, activity: activity(m).mode, aspect: +m.aspect.toFixed(2), mass: +m.mass.toFixed(2) } };
+    return { headline: `${an(m.foreName + ' ' + lin)} that probably flies ${md} in ${hab[0].n}.`, sections, facts: { lineage: lin, strategy: strategy(m).main, biome: hab[0].k, activity: activity(m).mode, aspect: +m.aspect.toFixed(2), mass: +m.mass.toFixed(2), spanMm: m.spanMm, spanSet: m.spanKnown } };
   }
   function toText(r) { return r.sections.map(s => s.title.toUpperCase() + '\n' + s.text).join('\n\n'); }
 
