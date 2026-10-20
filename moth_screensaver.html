@@ -206,12 +206,12 @@ const FS=`precision mediump float;varying vec2 v;uniform sampler2D uB,uM;uniform
 void main(){vec4 m=texture2D(uM,v);float a=m.a,sh=m.b*.33;
  if(a<.004){gl_FragColor=vec4(0.,0.,0.,sh);return;}
  vec2 n=m.rg*2.-1.;float e=min(length(n),1.);vec2 d=e>.002?n/e:vec2(0.);
- vec2 o=-d*pow(e,.75)*uS,b=uR.xy+v*uR.zw;
+ vec2 o=-d*pow(e,1.25)*uS,b=uR.xy+v*uR.zw;
  vec3 c=vec3(texture2D(uB,b+o*1.18).r,texture2D(uB,b+o).g,texture2D(uB,b+o*.82).b);
- c=mix(c,vec3(1.),.14)*(1.-.28*smoothstep(.15,.9,e));
+ c=mix(c,vec3(1.),.24)*(1.-.1*smoothstep(.3,1.,e));
  vec3 N=normalize(vec3(d*e*1.5,1.-.6*e));
- float s1=pow(max(dot(N,normalize(vec3(-.5,-.62,1.55))),0.),30.),s2=pow(max(dot(N,normalize(vec3(.5,.62,1.45))),0.),22.),fr=pow(1.-N.z,2.);
- vec3 col=c+s1*1.1+s2*vec3(.55,.75,1.)*.8+fr*.4;
+ float s1=pow(max(dot(N,normalize(vec3(-.5,-.62,1.55))),0.),70.),s2=pow(max(dot(N,normalize(vec3(.5,.62,1.45))),0.),45.),fr=pow(1.-N.z,3.);
+ vec3 col=c+s1*1.2+s2*vec3(.55,.75,1.)*.7+fr*.5;
  gl_FragColor=vec4(col*a,a+sh*(1.-a));}`;
 function initGL(){try{gl=gc.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:false,powerPreference:'low-power'});if(!gl)return false;
  const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(o);return o};
@@ -228,7 +228,7 @@ function buildMap(){const g=$('glass'),gw=g.clientWidth,gh=g.clientHeight,D=Math
  if(gc.width!==MW||gc.height!==MH){gc.width=MW;gc.height=MH;gl.viewport(0,0,MW,MH)}
  const map=new Uint8Array(MW*MH*4),m2=document.createElement('canvas'),x2=m2.getContext('2d',{willReadFrequently:true});
  TX.forEach(([id,x,y,fs,wt])=>{const str=lastT[id];if(!str)return;const f=fs*k,font=`${wt} ${f}px ${FF}`;x2.font=font;const mt=x2.measureText(str),asc=Math.ceil(mt.actualBoundingBoxAscent),dsc=Math.ceil(mt.actualBoundingBoxDescent),tw=Math.ceil(mt.width);
-  const r1=Math.max(1,Math.round(f*.04)),rs=Math.max(3,Math.round(f*.05)),P=r1*3+rs*3+4,cw=tw+2*P,ch=asc+dsc+2*P;
+  const r1=Math.max(1,Math.round(f*.017)),rs=Math.max(3,Math.round(f*.05)),P=r1*3+rs*3+4,cw=tw+2*P,ch=asc+dsc+2*P;
   m2.width=cw;m2.height=ch;x2.font=font;x2.textAlign='center';x2.fillStyle='#fff';x2.fillText(str,cw/2,P+asc);
   const d=x2.getImageData(0,0,cw,ch).data,N=cw*ch,A=new Float32Array(N),Hh=new Float32Array(N),Sh=new Float32Array(N);for(let i=0;i<N;i++)A[i]=Hh[i]=Sh[i]=d[i*4+3]/255;
   blur(Hh,cw,ch,r1);blur(Sh,cw,ch,rs);const ox=Math.round(x*k-cw/2),oy=Math.round(y*k-asc-P),gain=r1*2.5,so=Math.round(rs*.7);
