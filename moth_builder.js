@@ -454,7 +454,7 @@
             "body.tw",
             "Thorax width",
             10,
-            (c) => Math.min(24, g(c, "fore.chord") * 0.56),
+            (c) => Math.min(28, g(c, "fore.chord") * 0.6),
             0.5,
           ),
           R("body.shoulder", "Shoulder fluff (woolly thorax)", 0, 1, 0.01),
@@ -471,7 +471,7 @@
             "Abdomen length",
             38,
             (c) =>
-              Math.min(100, 1100 / g(c, "body.abdW"), g(c, "hind.chord") + 40),
+              Math.min(100, 1700 / g(c, "body.abdW"), g(c, "hind.chord") + 60),
             1,
           ),
           R("body.taper", "Abdomen taper", 0, 1, 0.01),
@@ -860,7 +860,7 @@
           tl = tw * 1.15,
           hw = tw * B.head,
           hl = hw * 0.78,
-          hy = -tl - hl * 0.5,
+          hy = -tl - hl * (0.5 - 0.22 * (B.shoulder || 0)),
           a0 = tl * 0.3,
           AL = B.abdLen,
           AW = B.abdW / 2,
@@ -940,7 +940,7 @@
         s += `<ellipse cy="${hy}" rx="${hw}" ry="${hl}" ${vf("body", B.color)}/>`;
         for (let i = 0; i < 9; i++) {
           const a = Math.PI * (1 + i / 8);
-          s += `<circle cx="${Math.cos(a) * hw * 0.9}" cy="${hy + Math.sin(a) * hl * 0.9}" r="${hw * 0.28 * (1 + J(0.5))}" fill="${tc(i)}"/>`;
+          s += `<circle cx="${Math.cos(a) * hw * 0.9}" cy="${hy + Math.sin(a) * hl * 0.9}" r="${hw * 0.28 * (1 + 0.8 * shf) * (1 + J(0.5))}" fill="${tc(i)}"/>`;
         }
         if (shf > 0.05)
           for (let i = 0; i < 7; i++) {
@@ -1201,7 +1201,7 @@
           s += `<ellipse cy="${-tw * 0.45}" rx="${tl * 0.6}" ry="${tw * 0.35}" fill="${B.mark.c}"/>`;
         const thS = s;
         // head: faces left, one big eye
-        const hc = [-(tl + hl * 0.55), tw * 0.12];
+        const hc = [-(tl + hl * (0.55 - 0.2 * (B.shoulder || 0))), tw * 0.12];
         s = `<ellipse cx="${hc[0]}" cy="${hc[1]}" rx="${hl * 1.05}" ry="${hw}" ${vf("body", B.color)}/>`;
         for (let i = 0; i < 9; i++) {
           const a = Math.PI * (0.5 + i / 8);
@@ -2715,17 +2715,17 @@
       /* ---- reference-photo pass: swept triangular forewings, woolly thorax, bigger eyes, soft fringe ---- */
       const FIX = {
         "Rosy maple moth": { f: [16, 0.5], sh: 0.9, ant: ["feather", "#b9773f"], fr: "#f2b5cc" },
-        "Luna moth": { f: [12, 0.2, 0.3], sh: 0.6, fr: "#e6f2cf" },
+        "Luna moth": { f: [12, 0.2, 0.3], sh: 0.6, fr: "#e6f2cf", tail: [58, 5.5] },
         "Atlas moth": { f: [10, 0.3, -0.35], sh: 0.7, fr: "#e8c9a0", lobe: 0.85 },
         "Polyphemus moth": { f: [14, 0.35], sh: 0.7, fr: "#e8cfa0" },
         "Io moth": { f: [14, 0.3], sh: 0.7, fr: "#f0d890" },
         "Cinnabar moth": { f: [26, 0.6, 0.5], hind: [62, 42, 0.2], sh: 0.5, fr: "#2a2430" },
-        "Sunset moth": { f: [10, 0.2], sh: 0.3, fr: "#f4f0e6", flen: 0.7, hindTeeth: [6, 2.6] },
+        "Sunset moth": { f: [10, 0.2], sh: 0.3, fr: "#f4f0e6", flen: 0.7, hindTeeth: [6, 2.6], tail: [28, 4] },
         "Giant leopard moth": { f: [16, 0.3], sh: 0.7, fr: "#f4f0e6", thorax: ["#f4f1ea", "#1f3f9a"] },
         "Peppered moth": { f: [16, 0.4], sh: 0.6, fr: "#e8e4dc" },
-        "Death’s-head hawkmoth": { f: [26, 0.65, 0.6], hind: [60, 40, 0.2], sh: 0.8, ant: ["club", "#2a2420"], fr: "#c9b890" },
-        "Elephant hawkmoth": { f: [30, 0.75, 0.8], hind: [58, 38, 0.2], sh: 0.7, ant: ["club", "#f2e4e8"], fr: "#f6d7e2" },
-        "Garden tiger moth": { f: [16, 0.35], sh: 0.9, fr: "#f4ead0" },
+        "Death’s-head hawkmoth": { f: [26, 0.65, 0.6], hind: [60, 40, 0.2], sh: 0.9, abd: [92, 0.85], ant: ["club", "#2a2420"], fr: "#c9b890" },
+        "Elephant hawkmoth": { f: [30, 0.75, 0.8], hind: [58, 38, 0.2], sh: 0.9, abd: [96, 0.8], ant: ["club", "#f2e4e8"], fr: "#f6d7e2" },
+        "Garden tiger moth": { f: [16, 0.35], sh: 0.9, hl: [72, 58], fr: "#f4ead0" },
         "Imperial moth": { f: [14, 0.3], sh: 0.8, fr: "#f2e6a0" },
         "Cecropia moth": { f: [14, 0.3], sh: 0.8, fr: "#f0e6d8" },
         "Buff-tip moth": { f: [18, 0.35], sh: 0.7, fr: "#d8c0a0" },
@@ -2739,10 +2739,16 @@
           m[k].fringe = { on: true, len: x.flen ?? 0.35, c: x.fr };
         const b = (m.body = { ...m.body });
         b.shoulder = x.sh;
-        b.tw = Math.min(24, (b.tw ?? 13) * (1 + 0.12 * x.sh));
+        b.tw = Math.min(26, (b.tw ?? 13) * (1 + 0.3 * x.sh));
         b.eyeSize = Math.min(0.32, (b.eyeSize ?? 0.15) * 1.6);
         b.abdW = Math.min(b.tw * 0.95, Math.max(b.abdW ?? 11, b.tw * 0.8));
         if (x.hind) m.hind = { ...m.hind, len: x.hind[0], chord: x.hind[1], round: x.hind[2], tilt: 24 };
+        if (x.abd) {
+          b.abdLen = x.abd[0];
+          b.abdW = Math.min(b.tw * 0.95, x.abd[1] * b.tw);
+        }
+        if (x.tail !== undefined) m.hind = { ...m.hind, tail: x.tail[0], tw: x.tail[1] };
+        if (x.hl) m.hind = { ...m.hind, len: x.hl[0], chord: x.hl[1] };
         if (x.lobe) m.fore.lobe = x.lobe;
         if (x.hindTeeth) m.hind = { ...m.hind, teeth: x.hindTeeth[0], tooth: x.hindTeeth[1] };
         if (x.thorax) {
