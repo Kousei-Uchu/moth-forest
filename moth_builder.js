@@ -2815,9 +2815,30 @@
             b.classList.toggle("on", b.dataset.view === cur.view),
           );
       }
+      /* Ecology tab: text inferred from the current parameters (same moth, same text). */
+      const escHTML = (s) =>
+        String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+      function ecologyHTML() {
+        if (!window.MothEcology)
+          return `<p class="note">moth_ecology.js did not load.</p>`;
+        try {
+          const r = window.MothEcology.describe(cur);
+          return `<p class="note">Inferred from this moth's shape, colour and body, so it follows every slider. Same moth, same text.</p>
+ <p class="eco-head">${escHTML(r.headline)}</p>
+ ${r.sections.map((s) => `<h4 class="eco-h">${escHTML(s.title)}</h4><p class="eco-p">${escHTML(s.text)}</p>`).join("")}`;
+        } catch (err) {
+          return `<p class="note">Could not write the ecology: ${escHTML(err.message)}</p>`;
+        }
+      }
       function draw() {
         const svg = renderMoth(cur, { free: true });
         $("#stage").innerHTML = svg;
+        if (tab === "Ecology") {
+          /* keep the reader's scroll position while sliders elsewhere change the moth */
+          const el = $("#panel"), y = el.scrollTop;
+          el.innerHTML = ecologyHTML();
+          el.scrollTop = y;
+        }
         const j = $("#js"),
           sv = $("#svg");
         if (j && document.activeElement !== j) j.value = JSON.stringify(cur);
@@ -2835,6 +2856,7 @@
  <label><span>Parameters (JSON, editable)</span><textarea id="js" rows="7"></textarea></label><button id="app">Apply JSON</button>
  <label><span>SVG output</span><textarea id="svg" rows="4" readonly></textarea></label>`;
         else if (tab === "Quiz") el.innerHTML = quizHTML();
+        else if (tab === "Ecology") el.innerHTML = ecologyHTML();
         else el.innerHTML = build(TABS[tab]);
         document
           .querySelectorAll("#tabs button")
@@ -2860,7 +2882,7 @@
           load(m, "seed " + seedText + " · " + randomMoth.last);
         }
       };
-      $("#tabs").innerHTML = ["Species", "Quiz", ...Object.keys(TABS)]
+      $("#tabs").innerHTML = ["Species", "Quiz", "Ecology", ...Object.keys(TABS)]
         .map((t) => `<button data-t="${t}">${t}</button>`)
         .join("");
       $("#tabs").addEventListener("click", (e) => {
