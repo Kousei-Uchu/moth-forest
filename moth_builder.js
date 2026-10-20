@@ -2920,10 +2920,10 @@
         REG.length = 0;
         const el = $("#panel");
         if (tab === "Species")
-          el.innerHTML = `<label><span>Species preset</span><select id="pre"><option value="">— choose —</option>${names.map((n, i) => `<option value="${i}">${n}</option>`).join("")}</select></label>
- <label><span>Generator style (seed + style → always the same moth)</span><select id="cat">${CATS.map((c) => `<option${c === catText ? " selected" : ""}>${c}</option>`).join("")}</select></label>
- <label><span>Seed — any text or number (Enter to load)</span><input id="seed" type="text" value="${seedText}" spellcheck="false" autocomplete="off"></label>
- <div class="row"><button id="go">Load seed</button><button id="rnd">🎲 Random seed</button></div>
+          el.innerHTML = `<label><span>Species preset</span><select id="pre"><option value="">Choose a species</option>${names.map((n, i) => `<option value="${i}">${n}</option>`).join("")}</select></label>
+ <label><span>Generator style (the same seed and style always give the same moth)</span><select id="cat">${CATS.map((c) => `<option${c === catText ? " selected" : ""}>${c}</option>`).join("")}</select></label>
+ <label><span>Seed (any text or number, press Enter to load)</span><input id="seed" type="text" value="${seedText}" spellcheck="false" autocomplete="off"></label>
+ <div class="row"><button id="go">Load seed</button><button id="rnd">Random seed</button></div>
  <p class="note">Seeds: 4,294,967,296 (2³²) per style; text is hashed into that space. “Any” mixes every style and also draws the named species presets (exact or as recoloured “cousins”). Current seed value: <b>${cur.seed}</b>.</p>
  ${sizeHTML()}
  <label><span>Parameters (JSON, editable)</span><textarea id="js" rows="7"></textarea></label><button id="app">Apply JSON</button>
@@ -3099,7 +3099,7 @@ You receive the person's quiz answers and a base moth JSON. Improve and personal
  <label><span>Your name, or a word that matters to you (optional, goes into the seed)</span><input id="qname" type="text" value="${qName.replace(/"/g, "&quot;")}" autocomplete="off"></label><p class="note" id="qres"></p>
  <fieldset><legend>AI-personalised moth (optional)</legend><p class="note">Sends your answers plus the moth above to an LLM via OpenRouter, which redesigns it as a portrait of you. AI output is not perfectly repeatable: temperature 0 and a fixed seed help, and each answer-set’s result is cached on this device. When you like one, copy its JSON from the Species tab; that is the permanent version. Your key stays in this page and is only sent to openrouter.ai. It won’t work on a host that blocks outside requests; “Copy prompt” works anywhere.</p>
  <label><span>OpenRouter API key</span><input id="aikey" type="password" autocomplete="off"></label><label><span>Model</span><input id="aimodel" type="text" value="anthropic/claude-sonnet-4.5"></label>
- <div class="row"><button id="aigo">✨ Generate with AI</button><button id="aicopy">Copy prompt (any chatbot, no key)</button></div>
+ <div class="row"><button id="aigo">Generate with AI</button><button id="aicopy">Copy prompt (any chatbot, no key)</button></div>
  <label><span>Paste the chatbot’s JSON reply</span><textarea id="aipaste" rows="4"></textarea></label><div class="row"><button id="aiuse">Use pasted JSON</button></div><p class="note" id="aist"></p></fieldset>`
         );
       }
@@ -3288,7 +3288,7 @@ You receive the person's quiz answers and a base moth JSON. Improve and personal
           const blob = await new Promise((r) => c.toBlob(r, "image/png"));
           saveFile(fname("png"), blob);
         } catch (err) {
-          alert("PNG export failed — try SVG instead.");
+          alert("PNG export failed. Try SVG instead.");
         }
       };
       load({ ...MOTHS[names[0]], seed: seedOf(names[0]) }, names[0]);

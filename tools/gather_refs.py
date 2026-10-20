@@ -291,11 +291,15 @@ class Clip:
         self.proc = CLIPProcessor.from_pretrained(CLIP_ID)
         self._t = {}
 
+    def _emb(self, x):
+        # transformers 4.x returns a tensor; 5.x returns an output object whose pooler_output holds the projected embeddings
+        return x if self.torch.is_tensor(x) else x.pooler_output
+
     def _text(self, texts):
         k = tuple(texts)
         if k not in self._t:
             with self.torch.no_grad():
-                f = self.model.get_text_features(**self.proc(text=list(texts), return_tensors="pt", padding=True).to(self.dev))
+                f = self._emb(self.model.get_text_features(**self.proc(text=list(texts), return_tensors="pt", padding=True).to(self.dev)))
             self._t[k] = f / f.norm(dim=-1, keepdim=True)
         return self._t[k]
 
@@ -308,7 +312,7 @@ class Clip:
         sp = [f"a photo of a {common} ({sci})"] + [f"a photo of a {c} ({SPECIES[c]})" for c in others] + [
             "a photo of a butterfly", "a photo of a moth", "a photo of something that is not an insect"]
         with self.torch.no_grad():
-            f = self.model.get_image_features(**self.proc(images=images, return_tensors="pt").to(self.dev))
+            f = self._emb(self.model.get_image_features(**self.proc(images=images, return_tensors="pt").to(self.dev)))
             f = f / f.norm(dim=-1, keepdim=True)
             pv = (100 * f @ self._text(vp).T).softmax(-1).cpu()
             ps = (100 * f @ self._text(sp).T).softmax(-1).cpu()
@@ -335,7 +339,7 @@ class FakeClip:
 # ---------------------------------------------------------------- state / output
 def dhash(im, size=8):
     g = im.convert("L").resize((size + 1, size), Image.LANCZOS)
-    px = list(g.getdata())
+    px = list(g.get_flattened_data() if hasattr(g, "get_flattened_data") else g.getdata())
     bits = 0
     for r in range(size):
         for c in range(size):

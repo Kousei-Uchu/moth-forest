@@ -147,7 +147,7 @@
       [m.slight, 'a light, sleek body'] ] },
     tropical: { n: 'warm, humid broadleaf forest', r: m => [
       [m.green ? 1 : 0, `${m.foreName} wings, a colour that only makes sense against living leaves`],
-      [m.tail, `hindwing tails ${Math.round(m.tailLen)} units long, a luxury of places with heavy bat pressure and plenty of food`],
+      [m.tail, `hindwing tails ${Math.round(m.tailLen)} units long, which pay off where bats hunt heavily and food is plentiful`],
       [nrm(m.sat, .3, .7), 'rich, saturated colours'],
       [m.eyes ? .8 : 0, `${m.eyes} eyespot${m.eyes > 1 ? 's' : ''}, common in big forest moths`],
       [(1 - m.fuzz) * m.broad, 'broad wings on a body with a thin coat'],
@@ -226,9 +226,9 @@
     const out = [];
     const why = a.why.slice(0, 3);
     out.push(pick(R, [
-      `Taken together, this build reads like a moth of ${a.n}.`,
-      `The traits line up most naturally with ${a.n}.`,
-      `If I had to place it on a map, it would be somewhere in ${a.n}.`]) +
+      `Everything about this build points to ${a.n}.`,
+      `The traits fit ${a.n} best.`,
+      `On a map, it would sit somewhere in ${a.n}.`]) +
       (why.length ? ` The evidence is ${list(why)}.` : ''));
     if (b && b.score > a.score * .8 && b.why.length) out.push(`${cap(b.n)} would be a close second, since it also has ${b.why[0]}.`);
     /* temperature from insulation */
@@ -239,7 +239,7 @@
         ? `With so little insulation it likely needs warm air, with nights that stay comfortably above about 15 degrees Celsius, or flies in daylight when it can warm itself in the sun.`
         : `Its coat is moderate (${f.toFixed(1)} on a scale that runs to 2.2), which suits mild nights and neither frost nor desert heat.`);
     /* moisture */
-    if (m.green || m.sat > .6) out.push(`Colour this vivid fades fast in dry sun and hard weather, so it implies shade and humidity rather than open ground.`);
+    if (m.green || m.sat > .6) out.push(`Colour this vivid fades fast in dry sun and hard weather, so it points to shady, humid places.`);
     else if (a.k === 'arid' && m.pale && m.fuzz < .5) out.push(`A pale, sleek moth sheds heat well, which points to dry air and strong light.`);
     return out.join(' ');
   });
@@ -261,7 +261,7 @@
     else out.push(`At this size it can warm its flight muscles a little by shivering, but it is not insulated like a big moth, so a cold spell will keep it perched.`);
     /* growing up */
     if (mm >= 90) out.push(`A moth this large began as a caterpillar as long as a finger or more, which eats a huge amount of leaf. That points to a habitat with plenty of host trees and a growing season long enough to finish the job.`);
-    else if (mm < 22) out.push(`Moths this small often start life as caterpillars so tiny they live inside a leaf, tunnelling between its surfaces, rather than munching it from the edge.`);
+    else if (mm < 22) out.push(`Moths this small often start life as caterpillars so tiny they live inside a leaf, tunnelling between its two surfaces.`);
     /* getting around */
     if (m.narrow > .55 && mm >= 55) out.push(`Long, narrow wings at this scale are built for covering ground, so it could range well beyond where it hatched.`);
     else if (small) out.push(`Something this light is carried by every gust, so it stays low and in sheltered spots and tends not to travel far.`);
@@ -271,9 +271,9 @@
   S('rhythm', 'When it is active', (m, p, R) => {
     const ac = activity(m), out = [], eye = p.body.eyeSize || .15;
     if (ac.mode === 'day') out.push(m.warn ? `It almost certainly flies by day. Bold ${m.warmUp ? 'warm' : 'contrasting'} colour on a ${m.foreName} ground is a warning, and warnings only work on predators that can see them in daylight.` : `It most likely flies by day. Its ${m.foreName} and ${m.hindName} colouring is far too conspicuous for a night moth that rests in view, and bold upper surfaces nearly always go with daylight flight or a defence worth advertising.`);
-    else if (ac.mode === 'dusk') out.push(`It probably flies around dusk and dawn. The colouring is moderately striking, which is a workable compromise: enough contrast to find mates in low light, not so much that birds spot it at rest.`);
-    else out.push(`It is almost certainly a night flier. ${cap(m.foreName)} ${m.contrast < .4 ? 'with so little contrast' : 'broken up by darker marks'} is a cryptic palette, built for a daytime rest rather than for being seen.`);
-    if (m.feather) out.push(`The feathery antennae (${p.antenna.len} units, ${p.antenna.barb} units of barb) say the same thing from a different angle: they are for tracking scent in the dark, not for looking at anything.`);
+    else if (ac.mode === 'dusk') out.push(`It probably flies around dusk and dawn. The colouring is moderately striking, which is a workable compromise: enough contrast to find mates in low light, but muted enough that birds are unlikely to spot it at rest.`);
+    else out.push(`It is almost certainly a night flier. ${cap(m.foreName)} ${m.contrast < .4 ? 'with so little contrast' : 'broken up by darker marks'} is a cryptic palette, built for resting out of sight by day.`);
+    if (m.feather) out.push(`The feathery antennae (${p.antenna.len} units, ${p.antenna.barb} units of barb) say the same thing from a different angle: they track scent in the dark and do nothing for sight.`);
     out.push(eye > .2 ? `Large eyes (${(eye * 100).toFixed(0)}% of its head size scale) would gather a great deal of light, another sign of low-light flight.` : `Eyes of modest size (${(eye * 100).toFixed(0)}% on the head-size scale) leave it relying on smell and touch more than sight.`);
     return out.join(' ');
   });
@@ -305,8 +305,8 @@
     const st = strategy(m), F = p.fore, nb = (F.bands || []).length, out = [], sub = substrate(m);
     const E = [].concat(F.eyes || [], p.hind.eyes || []);
     if (st.main === 'warn') {
-      out.push(`This is a moth that advertises instead of hiding. ${cap(m.foreName)} set against ${m.hindWarm ? m.hindName : 'its bright markings'} is the kind of loud, simple contrast predators learn to leave alone.`);
-      out.push(`Warning colour only pays if there is something behind it, so it very likely carries a bitter chemical defence, plausibly stored from toxic plants its caterpillar ate (ragwort-type alkaloids or milkweed-type heart poisons are the usual candidates, though nothing in the parameters can say which).`);
+      out.push(`This moth advertises itself. ${cap(m.foreName)} set against ${m.hindWarm ? m.hindName : 'its bright markings'} is the loud, simple contrast predators learn to leave alone.`);
+      out.push(`Warning colour only pays if there is something behind it, so it very likely carries a bitter chemical defence, plausibly stored from toxic plants its caterpillar ate (ragwort-type alkaloids or milkweed-type heart poisons are the usual candidates, though the parameters don't say which).`);
     } else if (st.main === 'flash') {
       out.push(`By day it probably sits motionless on ${sub}, with the ${m.foreName} forewings folded over the ${m.hindName} hindwings so that nothing bright shows.`);
       out.push(`If something finds it anyway, it can snap the forewings forward and flare the ${m.hindName} underwings. The sudden colour buys the half-second it needs to drop away and vanish again, a trick real underwing and tiger moths use.`);
@@ -398,7 +398,7 @@
     const A = p.antenna, B = p.body, out = [], heavyAbd = B.abdW / B.tw > .9;
     if (m.feather) out.push(`Feather-like antennae with ${A.barb} units of side-branches turn each antenna into a huge scent-catching surface. A moth built this way is almost always a male, tracking the faint trail of a female's pheromone over long distances while she waits.`);
     else if (m.serrate) out.push(`Saw-edged antennae sit between thread and feather: able to pick up scent, but not specialised for it. Both sexes of such species tend to search actively.`);
-    else out.push(`Thread-like antennae (${A.len} units long) suggest either a female, who releases scent rather than hunts for it, or a species where sight and plain scent are enough for finding partners.`);
+    else out.push(`Thread-like antennae (${A.len} units long) suggest either a female, who releases scent and waits, or a species where sight and plain scent are enough for finding partners.`);
     if (heavyAbd) out.push(`The abdomen is thick (${B.abdW} wide against a ${B.tw} thorax), which is how a female carrying a full load of eggs looks, and would explain a heavier, slower flight.`);
     else out.push(`The slim abdomen (${B.abdW} wide against a ${B.tw} thorax) fits a male built for search flight.`);
     if (m.heavy > .3 && m.feather) out.push(`If this is the male of a large non-feeding species, the female is likely larger and plumper, less keen to fly, and may be of a different colour intensity, since dimorphism in moths goes in no single direction.`);
@@ -410,7 +410,7 @@
       ? `The wingspan you set (${fmtSpan(m.spanMm, m.unit)}) anchors the size, warmth and growth remarks, so those are on firmer ground. Bulk and flight style still come from proportions, since the drawing itself is always scaled to the same size.`
       : `No wingspan is set, so every statement about size, bulk, flight and feeding comes from proportions and a guessed scale. Setting a real wingspan in the Species tab removes most of that guesswork.`];
     out.push(`Links like pale moths in dry places and fuzzy moths in the cold are well-supported tendencies with exceptions; the notion that colour reveals diet or season is much weaker, and some of the underlying research comes from butterflies.`);
-    out.push(`Read this as the most plausible life for this exact body and palette, not as a fact: change a single colour or wing proportion in the builder and the story may shift.`);
+    out.push(`Treat this as one plausible life for this exact body and palette. Change a single colour or wing proportion in the builder and the story may shift.`);
     return out.join(' ');
   });
 

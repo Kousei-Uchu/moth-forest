@@ -51,7 +51,7 @@
     {
       title: 'The Ecology tab: how the app "knows" where a moth lives',
       body: `
-        <p>It does not know, and it says so. What it does is reason the way a naturalist would when handed an unlabelled specimen.</p>
+        <p>It can't know, and it admits that. It reasons like a naturalist looking at an unlabelled specimen.</p>
         <p>It measures the moth: colours, wing length against width, how heavy the body is for its wings, the coat of fuzz, the antennae, the markings and the wingspan. Then it weighs those clues against well-established patterns in real moths. For example:</p>
         <ul>
           <li>Pale, sleek moths tend to live in hot, dry, bright places, where dark colour would overheat them.</li>
@@ -60,7 +60,7 @@
           <li>Feathered antennae are for catching scent, so they point to a male searching for a mate in the dark.</li>
           <li>Green wings only make sense against living leaves.</li>
         </ul>
-        <p>Each possible habitat gets a score, the best match wins, and the text is assembled from this moth's own numbers rather than picked from a list. That is why two moths rarely read alike. The same moth always produces the same text, and the last section tells you how much of it is educated guesswork.</p>`
+        <p>Each possible habitat gets a score, the best match wins, and the text is assembled from this moth's own numbers instead of picked from a list, so two moths rarely read alike. The same moth always produces the same text, and the last section tells you how much of it is educated guesswork.</p>`
     },
     {
       title: 'The quiz and the optional AI moth',
@@ -84,9 +84,9 @@
         <p>The screensaver page loads the same moths and lets them drift around a scene with the time and weather. Click a moth to see what it is up to and open its <b>Where it lives</b> note, written by the same ecology engine as the Ecology tab.</p>`
     },
     {
-      title: 'What this is and is not',
+      title: 'What to expect from it',
       body: `
-        <p>It is a design toy with real biology behind its reasoning. It is not an identification tool, and the habitat writing is inference from shape and colour, not a record of any real animal. Some of the underlying research comes from butterflies, and the link between colour and diet or season is weak. Treat the Ecology tab as the most plausible life for this exact moth, and expect the story to shift when you change a colour or a wing.</p>`
+        <p>A design toy with real biology behind its reasoning. Don't use it to identify a moth you found: the habitat writing is a guess from shape and colour. Some of the research behind it comes from butterflies, and the link between colour and diet or season is weak. Read the Ecology tab as one plausible life for this exact moth. Change a colour or a wing and the story may shift.</p>`
     }
   ];
 
