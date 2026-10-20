@@ -18,8 +18,9 @@ How it works (per species):
      CLIP model sorts it into a view bucket or rejects it:
        dorsal / ventral / lateral / live (natural pose) / head (close-up of head and antennae)
        rejects: caterpillar, pupa, drawing, map, specimen plate/collage, person, butterfly, wrong species...
-  3. The loop is adaptive: structured sources run first; any bucket still short then gets bucket-specific
-     web queries (several phrasings each) until it is full or the queries run out.
+  3. The loop is adaptive: structured sources run first, each abandoned once it stops adding anything to a
+     bucket that is still short (--stall, --source-cap). Any bucket still short then gets bucket-specific
+     web queries (several phrasings each) until it is full, the queries run out, or the stream stalls.
   4. Accepted photos are re-encoded as JPEG and written to per-species zips.
 
 Output (default folder reference_images/):
@@ -360,6 +361,10 @@ class State:
         os.makedirs(self.work, exist_ok=True)
         self.rows, self.seen_urls, self.hashes = [], set(), {}
         self.path = os.path.join(self.work, "manifest_all.csv")
+        self.dead_path = os.path.join(self.work, "dead_urls.txt")
+        if os.path.exists(self.dead_path):
+            with open(self.dead_path, encoding="utf-8") as f:
+                self.seen_urls.update(line.strip() for line in f if line.strip())
         if os.path.exists(self.path):
             with open(self.path, newline="", encoding="utf-8") as f:
                 self.rows = list(csv.DictReader(f))
@@ -377,6 +382,12 @@ class State:
 
     def count(self, sp, bucket):
         return sum(1 for r in self.rows if r["species"] == sp and r["bucket"] == bucket)
+
+    def mark_dead(self, url):
+        """Remember a candidate that was downloaded and not kept (rejected, or its view was already full), so a resumed run never re-fetches it."""
+        self.seen_urls.add(url)
+        with open(self.dead_path, "a", encoding="utf-8") as f:
+            f.write(url + "\n")
 
     def add(self, row):
         self.rows.append(row)
@@ -414,9 +425,11 @@ def process(cands, common, sci, args, clip, st, needed):
     keep = []
     for c, im in got:
         if im is None or min(im.size) < args.min_side:
+            st.mark_dead(c["url"])
             continue
         h = dhash(im)
         if any(bin(h ^ o).count("1") <= 4 for o in st.hashes.get(common, [])):
+            st.mark_dead(c["url"])
             continue
         keep.append((c, im.convert("RGB"), h))
     if not keep:
@@ -425,9 +438,11 @@ def process(cands, common, sci, args, clip, st, needed):
     saved = 0
     for (c, im, h), r in zip(keep, res):
         b = r["label"]
-        if b not in needed or r["p"] < args.view_thr or st.count(common, b) >= args.per_bucket:
+        if b not in VIEWS or r["p"] < args.view_thr or ((not c["trusted"] or args.strict_species) and r["wrong_species"]):
+            st.mark_dead(c["url"])
             continue
-        if (not c["trusted"] or args.strict_species) and r["wrong_species"]:
+        if b not in needed or st.count(common, b) >= args.per_bucket:
+            st.mark_dead(c["url"])
             continue
         im.thumbnail((args.max_side, args.max_side), Image.LANCZOS)
         name = f"{b}_{hashlib.sha1(c['url'].encode()).hexdigest()[:10]}.jpg"
@@ -448,19 +463,39 @@ def run_species(common, sci, args, clip, st):
     print(f"\n== {common} ({sci}) ==  have: " + ", ".join(f"{b} {st.count(common, b)}" for b in VIEWS))
 
     def feed(stream, src):
-        batch = []
-        for c in stream:
-            if c["url"] in st.seen_urls:
-                continue
-            st.seen_urls.add(c["url"])
-            c["src"] = src
-            batch.append(c)
-            if len(batch) >= args.batch:
+        """Process a candidate stream in batches; abandon it once it has clearly stopped producing.
+
+        A batch only counts as productive if it saved a photo into a bucket that is still short, so a
+        source that keeps returning more of what is already full (e.g. more dorsal shots) stalls out.
+        """
+        batch, stale, tried = [], 0, 0
+        try:
+            for c in stream:
+                if c["url"] in st.seen_urls:
+                    continue
+                st.seen_urls.add(c["url"])
+                c["src"] = src
+                batch.append(c)
+                if len(batch) < args.batch:
+                    continue
                 n = process(batch, common, sci, args, clip, st, short())
+                tried += len(batch)
                 batch = []
                 print(f"    [{src}] +{n}  " + " ".join(f"{b}:{st.count(common, b)}" for b in VIEWS), flush=True)
                 if not short():
                     return True
+                stale = 0 if n else stale + 1
+                why = None
+                if args.stall and stale >= args.stall:
+                    why = f"{stale} batches in a row added nothing"
+                elif args.source_cap and tried >= args.source_cap:
+                    why = f"{tried} candidates tried"
+                if why:
+                    print(f"    [{src}] giving up ({why}); still short: {', '.join(sorted(short()))}", flush=True)
+                    return False
+        finally:
+            if hasattr(stream, "close"):
+                stream.close()
         if batch:
             process(batch, common, sci, args, clip, st, short())
         return not short()
@@ -494,6 +529,8 @@ def main():
     ap.add_argument("--openverse-pages", type=int, default=5)
     ap.add_argument("--web-results", type=int, default=60)
     ap.add_argument("--batch", type=int, default=24)
+    ap.add_argument("--stall", type=int, default=3, help="give up on a source after this many consecutive batches that add nothing to a still-short view (0 = never)")
+    ap.add_argument("--source-cap", type=int, default=400, help="hard cap on candidates tried per source per species (0 = no cap)")
     ap.add_argument("--threads", type=int, default=8)
     ap.add_argument("--device", default="auto")
     ap.add_argument("--fake-clip", action="store_true", help="testing only: skip the model")
@@ -506,7 +543,8 @@ def main():
     clip = FakeClip() if args.fake_clip else Clip(args.device)
     st = State(args.out)
     try:
-        for n in names:
+        for i, n in enumerate(names, 1):
+            print(f"\n[{i}/{len(names)}]", end="")
             run_species(n, SPECIES[n], args, clip, st)
             st.write_zips()  # after every species, so an interrupted run still leaves usable zips
     except KeyboardInterrupt:
