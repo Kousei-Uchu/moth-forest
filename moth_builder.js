@@ -382,21 +382,23 @@
             0.1,
             (c) => g(c, "fore.teeth") > 0,
           ),
-          R("fore.tilt", "Wing angle", -6, 8, 0.5),
+          R("fore.tilt", "Wing angle (swept back)", -6, 34, 0.5),
+          R("fore.oblique", "Outer margin slant (triangular wing)", 0, 1, 0.01),
+          R("fore.lobe", "Apex lobe (Atlas-style wingtip)", 0, 1, 0.01),
         ],
         Hindwing: [
           R(
             "hind.len",
             "Length",
-            55,
-            (c) => Math.min(92, g(c, "fore.chord") * 2.3),
+            40,
+            (c) => Math.min(92, Math.max(48, g(c, "fore.chord") * 2.3)),
             1,
           ),
           R(
             "hind.chord",
             "Width",
-            (c) => g(c, "hind.len") * 0.7,
-            (c) => Math.min(g(c, "hind.len") * 1.08, g(c, "fore.chord") * 1.5),
+            (c) => g(c, "hind.len") * 0.5,
+            (c) => Math.min(g(c, "hind.len") * 1.08, Math.max(30, g(c, "fore.chord") * 1.5)),
             0.5,
           ),
           R("hind.round", "Outer roundness", 0, 1, 0.01),
@@ -450,10 +452,11 @@
             "body.tw",
             "Thorax width",
             10,
-            (c) => Math.min(21, g(c, "fore.chord") * 0.5),
+            (c) => Math.min(24, g(c, "fore.chord") * 0.56),
             0.5,
           ),
-          R("body.head", "Head size", 0.42, 0.66, 0.01),
+          R("body.shoulder", "Shoulder fluff (woolly thorax)", 0, 1, 0.01),
+          R("body.head", "Head size", 0.42, 0.72, 0.01),
           R(
             "body.abdW",
             "Abdomen width",
@@ -472,7 +475,7 @@
           R("body.taper", "Abdomen taper", 0, 1, 0.01),
           R("body.fuzz", "Fuzz / hair-scales", 0, 2.2, 0.05),
           T("body.eyes", "Show eyes"),
-          R("body.eyeSize", "Eye size", 0.08, 0.26, 0.01, on("body.eyes")),
+          R("body.eyeSize", "Eye size", 0.08, 0.32, 0.01, on("body.eyes")),
           T("body.segments", "Abdomen segments"),
           T("body.stripe.on", "Abdomen bands"),
           K("body.stripe.c", "Band colour", on("body.stripe.on")),
@@ -481,7 +484,7 @@
           K("body.legs.c", "Leg colour (bottom view only)"),
         ],
         Antennae: [
-          S("antenna.type", "Type", ["thread", "serrate", "feather"]),
+          S("antenna.type", "Type", ["thread", "serrate", "feather", "club"]),
           R("antenna.len", "Length", 22, 60, 1),
           R("antenna.spread", "Spread angle", 15, 50, 1),
           R(
@@ -594,14 +597,19 @@
           C = w.chord,
           ay = -w.sweep * L,
           h = w.hook,
-          t = w.tx;
+          ob = w.oblique || 0,
+          lb = w.lobe || 0,
+          t = w.tx * (1 - 0.3 * ob);
         const P = [
           [0, -0.03 * C],
           [0.32 * L, ay * 0.32 - w.costal * 0.2 * C],
           [0.68 * L, ay * 0.72 - w.costal * 0.16 * C],
           [0.92 * L, ay * 0.97 + 0.04 * C],
-          [L + h * 0.1 * L, ay + 0.2 * C - h * 0.22 * C],
-          [L * (0.97 + w.bulge * 0.06) - h * 0.14 * L, ay + (C - ay) * 0.45],
+          [L + h * 0.1 * L + lb * 0.1 * L, ay + 0.2 * C - h * 0.22 * C - lb * 0.14 * C],
+          [
+            L * (0.97 + w.bulge * 0.06) * (1 - 0.16 * ob - 0.1 * lb) - h * 0.14 * L,
+            ay + (C - ay) * 0.45,
+          ],
           [L * t + 0.08 * L, C * 0.88],
           [L * t - 0.03 * L, C],
           [0.55 * L, C * 0.98],
@@ -805,8 +813,18 @@
       /* ---- body: thorax, small head with lateral eyes, rounded segmented abdomen, antennae ---- */
       // antenna drawing shared by top/bottom and side views: pts = centreline, J = jitter, vk = stroke painter
       function antDraw(pts, A, J, vk) {
-        let o = `<path d="${pathOf(pts, false)}" fill="none" ${vk("antenna", A.color)} stroke-width="1.5" stroke-linecap="round"/>`;
-        if (A.type !== "thread") {
+        let o = `<path d="${pathOf(pts, false)}" fill="none" ${vk("antenna", A.color)} stroke-width="${A.type === "club" ? 1.8 : 1.5}" stroke-linecap="round"/>`;
+        if (A.type === "club") {
+          // thickened, tapering outer half with a small hooked tip (hawkmoth / burnet style)
+          const n = pts.length - 1,
+            e = pts[n],
+            q = pts[n - 1],
+            ux = e[0] - q[0],
+            uy = e[1] - q[1],
+            m = Math.hypot(ux, uy) || 1;
+          o += `<path d="${pathOf(pts.slice(Math.round(n * 0.45)), false)}" fill="none" ${vk("antenna", A.color)} stroke-width="3" stroke-linecap="round"/>`;
+          o += `<path d="M${e[0]} ${e[1]}q${((ux / m) * 3 - (uy / m) * 3).toFixed(1)} ${((uy / m) * 3 + (ux / m) * 3).toFixed(1)} ${(-(uy / m) * 5).toFixed(1)} ${((ux / m) * 5).toFixed(1)}" fill="none" ${vk("antenna", A.color)} stroke-width="1.6" stroke-linecap="round"/>`;
+        } else if (A.type !== "thread") {
           const f = A.type === "serrate" ? 0.35 : 1;
           let d = "";
           for (let i = 2; i < 24; i++) {
@@ -897,13 +915,21 @@
             s += `<circle cx="${(sg * h * (0.95 + rnd() * 0.1)).toFixed(1)}" cy="${(a0 + AL * t + J(2)).toFixed(1)}" r="${(AW * 0.2 * (1 + J(0.7))).toFixed(1)}" fill="${tc(i + (sg > 0))}"/>`;
         }
         cut("abd");
-        s += `<ellipse rx="${tw}" ry="${tl}" ${vf("body", B.color)}/>`;
+        const shf = B.shoulder || 0,
+          trx = tw * (1 + 0.3 * shf),
+          try_ = tl * (1 + 0.1 * shf);
+        s += `<ellipse rx="${trx}" ry="${try_}" ${B.thoraxColor ? vf("thorax", B.thoraxColor) : vf("body", B.color)}/>`;
         const nt = Math.round(28 * B.fuzz);
         for (let i = 0; i < nt; i++) {
           const a = (Math.PI * 2 * i) / nt + rnd() * 0.2,
             k = 0.92 + rnd() * 0.12;
-          s += `<circle cx="${(Math.cos(a) * tw * k).toFixed(1)}" cy="${(Math.sin(a) * tl * k).toFixed(1)}" r="${(tw * 0.24 * (1 + J(0.7))).toFixed(1)}" fill="${tc(i)}"/>`;
+          s += `<circle cx="${(Math.cos(a) * trx * k).toFixed(1)}" cy="${(Math.sin(a) * try_ * k).toFixed(1)}" r="${(tw * 0.24 * (1 + J(0.7))).toFixed(1)}" fill="${tc(i)}"/>`;
         }
+        // soft tufts where the wings join the thorax
+        if (shf > 0.05)
+          for (const sg of [1, -1])
+            for (let i = 0; i < 4; i++)
+              s += `<circle cx="${(sg * trx * (0.8 + i * 0.07)).toFixed(1)}" cy="${(-try_ * 0.45 + i * try_ * 0.3 + J(2)).toFixed(1)}" r="${(tw * 0.3 * shf * (1 + J(0.5))).toFixed(1)}" fill="${tc(i + 1)}"/>`;
         if (B.mark.on && !bottom)
           s += `<ellipse cy="${-tl * 0.1}" rx="${tw * 0.42}" ry="${tl * 0.55}" fill="${B.mark.c}"/>`;
         cut("thorax");
@@ -912,6 +938,11 @@
           const a = Math.PI * (1 + i / 8);
           s += `<circle cx="${Math.cos(a) * hw * 0.9}" cy="${hy + Math.sin(a) * hl * 0.9}" r="${hw * 0.28 * (1 + J(0.5))}" fill="${tc(i)}"/>`;
         }
+        if (shf > 0.05)
+          for (let i = 0; i < 7; i++) {
+            const a = Math.PI * (0.12 + (0.76 * i) / 6);
+            s += `<circle cx="${(Math.cos(a) * hw * 0.95).toFixed(1)}" cy="${(hy + hl * 0.55 + Math.sin(a) * hl * 0.5).toFixed(1)}" r="${(hw * 0.3 * (0.6 + shf * 0.5) * (1 + J(0.4))).toFixed(1)}" fill="${tc(i)}"/>`;
+          }
         if (B.eyes)
           for (const sg of [1, -1])
             s += `<ellipse cx="${sg * hw * 0.78}" cy="${hy + hl * 0.1}" rx="${hw * B.eyeSize}" ry="${hw * B.eyeSize * 1.25}" ${vf("eye", B.eyeColor)}/>`;
@@ -1154,8 +1185,8 @@
         }
         const abdS = s;
         // thorax: length along x, depth along y
-        const ty = tw * 0.95;
-        s = `<ellipse rx="${tl}" ry="${ty}" ${vf("body", B.color)}/>`;
+        const ty = tw * (0.95 + 0.25 * (B.shoulder || 0));
+        s = `<ellipse rx="${tl}" ry="${ty}" ${B.thoraxColor ? vf("thorax", B.thoraxColor) : vf("body", B.color)}/>`;
         const nt = Math.round(28 * B.fuzz);
         for (let i = 0; i < nt; i++) {
           const a = (Math.PI * 2 * i) / nt + rnd() * 0.2,
@@ -1249,8 +1280,8 @@
           };
         });
         const m = [
-            [0.93, 0.07, 0, 0.58],
-            [0.93, -0.03, 0, 0.56],
+            [0.92, 0.2, 0, 0.6],
+            [0.92, 0.15, 0, 0.58],
           ],
           fpos = [
             [-tl * 0.45, -tw * 0.7],
@@ -1405,7 +1436,8 @@
               tornus: V(o.tornus, [-0.3, 0.4]),
               teeth: Y(o.teethP ?? 0.08) ? P([3, 4, 5, 6]) : 0,
               tooth: Rn(1, 2.2),
-              tilt: Rn(-2, 4),
+              tilt: Rn(8, 20),
+              oblique: Rn(0.15, 0.5),
             },
             hind: {
               len: hl,
@@ -2676,6 +2708,45 @@
           antenna: { type: "serrate", len: 28, color: "#6a6558" },
         },
       };
+      /* ---- reference-photo pass: swept triangular forewings, woolly thorax, bigger eyes, soft fringe ---- */
+      const FIX = {
+        "Rosy maple moth": { f: [16, 0.5], sh: 0.9, ant: ["feather", "#b9773f"], fr: "#f2b5cc" },
+        "Luna moth": { f: [12, 0.2, 0.3], sh: 0.6, fr: "#e6f2cf" },
+        "Atlas moth": { f: [10, 0.3, -0.35], sh: 0.7, fr: "#e8c9a0", lobe: 0.85 },
+        "Polyphemus moth": { f: [14, 0.35], sh: 0.7, fr: "#e8cfa0" },
+        "Io moth": { f: [14, 0.3], sh: 0.7, fr: "#f0d890" },
+        "Cinnabar moth": { f: [26, 0.6, 0.5], hind: [62, 42, 0.2], sh: 0.5, fr: "#2a2430" },
+        "Sunset moth": { f: [10, 0.2], sh: 0.3, fr: "#f4f0e6", flen: 0.7, hindTeeth: [6, 2.6] },
+        "Giant leopard moth": { f: [16, 0.3], sh: 0.7, fr: "#f4f0e6", thorax: ["#f4f1ea", "#1f3f9a"] },
+        "Peppered moth": { f: [16, 0.4], sh: 0.6, fr: "#e8e4dc" },
+        "Death’s-head hawkmoth": { f: [26, 0.65, 0.6], hind: [60, 40, 0.2], sh: 0.8, ant: ["club", "#2a2420"], fr: "#c9b890" },
+        "Elephant hawkmoth": { f: [30, 0.75, 0.8], hind: [58, 38, 0.2], sh: 0.7, ant: ["club", "#f2e4e8"], fr: "#f6d7e2" },
+        "Garden tiger moth": { f: [16, 0.35], sh: 0.9, fr: "#f4ead0" },
+        "Imperial moth": { f: [14, 0.3], sh: 0.8, fr: "#f2e6a0" },
+        "Cecropia moth": { f: [14, 0.3], sh: 0.8, fr: "#f0e6d8" },
+        "Buff-tip moth": { f: [18, 0.35], sh: 0.7, fr: "#d8c0a0" },
+      };
+      for (const [n, x] of Object.entries(FIX)) {
+        const m = MOTHS[n];
+        if (!m) continue;
+        m.fore = { ...m.fore, tilt: x.f[0], oblique: x.f[1] };
+        if (x.f[2] !== undefined) m.fore.apex = x.f[2] < 0 ? x.f[2] : Math.max(m.fore.apex ?? 0, x.f[2]);
+        for (const k of ["fore", "hind"])
+          m[k].fringe = { on: true, len: x.flen ?? 0.35, c: x.fr };
+        const b = (m.body = { ...m.body });
+        b.shoulder = x.sh;
+        b.tw = Math.min(24, (b.tw ?? 13) * (1 + 0.12 * x.sh));
+        b.eyeSize = Math.min(0.32, (b.eyeSize ?? 0.15) * 1.6);
+        b.abdW = Math.min(b.tw * 0.95, Math.max(b.abdW ?? 11, b.tw * 0.8));
+        if (x.hind) m.hind = { ...m.hind, len: x.hind[0], chord: x.hind[1], round: x.hind[2], tilt: 24 };
+        if (x.lobe) m.fore.lobe = x.lobe;
+        if (x.hindTeeth) m.hind = { ...m.hind, teeth: x.hindTeeth[0], tooth: x.hindTeeth[1] };
+        if (x.thorax) {
+          b.thoraxColor = x.thorax[0];
+          b.mark = { on: true, c: x.thorax[1] };
+        }
+        if (x.ant) m.antenna = { ...m.antenna, type: x.ant[0], color: x.ant[1] };
+      }
       /* Shared with moth_screensaver.html: everything above this line is the rendering logic. */
       window.MothLib = { renderMoth, full, constrain, MOTHS, seedOf, randomMoth, CATS };
       /* Builder UI below only runs on moth_builder.html (so the screensaver can load this file safely). */
@@ -2866,7 +2937,7 @@
         qName = "";
       const SYS = `You design a personalised moth for the Moth Generator by writing its parameter JSON. Reply with ONE json code block, then one line naming the moth and why it fits the person.
 Personality to moth: express 2-3 traits through concrete choices (silhouette, palette, one signature mark, body/antennae), not everything. Gentle/cosy: rounded corners (negative apex/tornus), pastel, fuzzy body. Bold/loud: saturated high contrast, big spots or eyespots. Private/observant: muted, speckled, cryptic, with one hidden bright flash on the hindwing. Mysterious: near-black or bone base, one glow colour, falcate wings. Graceful: narrow wings, long curled tails, pale palette, veins. Playful/bluffing: eyespots. Keep real-moth logic: bright upper wings need a reason.
-Rules: pure JSON, numbers like 0.2 (never .2), colours #rrggbb only. Lists replace and every item needs all fields: band {u,w,w2,skew,wave,freq,c}; spot {u,v,rx,ry,c,ring,rw,o,rot}; eyespot {u,v,r,cols:[outer..pupil],hl}. Toggle objects: margin/costalBand {on,w,c}, grad {on,c}, veins {on,c}, fringe {on,len,c}, speck {on,n,s,c,ring,rc}. Wing coords: u 0 at body to 1 at outer edge; v 0 leading edge to 1 trailing edge; hindwing markings belong at v>0.45 (forewing covers the rest). Ranges: fore.chord 30-62, fore.sweep 0-0.34, fore.hook 0-0.9 (max (70-chord)/25), fore.apex/tornus and hind.apex/anal -0.9 (round) to 0.9 (sharp), hind.len 55-92, hind.chord 0.7-1.08 x len, hind.tail 0-1.6 x len, body.tw 10-21, body.abdW 0.45-0.95 x tw, body.abdLen 38-100, body.fuzz 0-2.2, antenna.type thread|serrate|feather, antenna.len 22-60. Keep fore.len 100, keep fringe off and organic 0.
+Rules: pure JSON, numbers like 0.2 (never .2), colours #rrggbb only. Lists replace and every item needs all fields: band {u,w,w2,skew,wave,freq,c}; spot {u,v,rx,ry,c,ring,rw,o,rot}; eyespot {u,v,r,cols:[outer..pupil],hl}. Toggle objects: margin/costalBand {on,w,c}, grad {on,c}, veins {on,c}, fringe {on,len,c}, speck {on,n,s,c,ring,rc}. Wing coords: u 0 at body to 1 at outer edge; v 0 leading edge to 1 trailing edge; hindwing markings belong at v>0.45 (forewing covers the rest). Ranges: fore.chord 30-62, fore.sweep 0-0.34, fore.hook 0-0.9 (max (70-chord)/25), fore.apex/tornus and hind.apex/anal -0.9 (round) to 0.9 (sharp), hind.len 40-92 (small triangular hindwings for hawkmoths ~45), hind.chord 0.5-1.08 x len, hind.tail 0-1.6 x len, body.tw 10-21, body.abdW 0.45-0.95 x tw, body.abdLen 38-100, body.fuzz 0-2.2, antenna.type thread|serrate|feather|club (club = thickened hooked tip, hawkmoths), antenna.len 22-60, fore.tilt 6-30 (wings swept back; narrow-winged moths 24-30), fore.oblique 0-1 (outer margin slant; 0.2 rounded, 0.7 sharp triangle), fore.lobe 0-1 (Atlas-style wingtip), body.shoulder 0-1 (woolly thorax), optional body.thoraxColor, body.tw up to 24, body.eyeSize up to 0.3. Keep fore.len 100 and organic 0; fringe on with len 0.4-0.7 in a pale colour.
 You receive the person's quiz answers and a base moth JSON. Improve and personalise the base moth; output the complete JSON.`;
       const aiMsg = (p) =>
         JSON.stringify({
