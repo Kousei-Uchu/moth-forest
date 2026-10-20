@@ -31,6 +31,8 @@ input[type=range]{padding:0}
 .mr{display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.18);padding:6px 0}.mr .sl{flex:1 1 100%;display:flex;align-items:center;gap:8px;font-size:12px;opacity:.9}.mr .sl input{flex:1;margin:0;width:auto}.mr .sl b{min-width:3.2em;text-align:right;font-weight:600}.mr .pv{width:56px;flex:none}.mr .pv svg{width:100%;height:auto;display:block}.mr span{flex:1}
 #gear{position:fixed;right:16px;bottom:16px;z-index:9;width:44px;height:44px;border-radius:50%;padding:0;font-size:20px;transition:opacity .5s}
 html.idle #gear{opacity:0;pointer-events:none}
+#home{left:16px;top:16px;z-index:9;width:44px;height:44px;border-radius:50%;padding:0;display:grid;place-items:center;font-size:20px;text-decoration:none;transition:opacity .5s}
+html.idle #home{opacity:0;pointer-events:none}
 </style></head><body>
 <canvas id="bg"></canvas>
 <div id="moths"></div>
@@ -50,6 +52,7 @@ html.idle #gear{opacity:0;pointer-events:none}
  </svg>
  <canvas id="gl"></canvas>
 </div>
+<a id="home" class="card" href="/" title="Back to home" aria-label="Back to home">←</a>
 <div id="info" class="card" hidden></div>
 <button id="gear" class="card" title="Settings (S)">⚙</button>
 <div id="set" class="card" hidden>
@@ -68,6 +71,7 @@ html.idle #gear{opacity:0;pointer-events:none}
  <h4>Moths</h4><label>Size <input id="sz" type="range" min="50" max="220"></label>
  <h4>Display</h4><select id="gm"><option value="gl">Glass: refraction (WebGL)</option><option value="flat">Glass: flat (cheapest)</option></select><label>Glass refresh: <b id="gfv"></b> fps <input id="gf" type="range" min="2" max="30"></label><button id="fs">Fullscreen (F)</button>
 </div>
+<script>if(location.protocol==='file:')document.getElementById('home').href='index.html'</script>
 <script src="moth_ecology.js"></script>
 <script src="moth_builder.js"></script>
 <script>

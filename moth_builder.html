@@ -601,10 +601,13 @@
           max-height: none;
         }
       }
-    </style>
+    .homeb{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--fg);text-decoration:none;font:inherit;transition:background .15s,border-color .15s}
+.homeb:hover{border-color:var(--acc);background:var(--tint)}
+</style>
   </head>
   <body>
     <header class="top">
+<a class="homeb" id="home" href="/" aria-label="Back to Moth Forest home">← Home</a>
       <div class="brand">
         <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
           <path d="M16 9c-1 0-1.6 1-1.6 2.4V22c0 1.2.7 2 1.6 2s1.6-.8 1.6-2V11.4C17.6 10 17 9 16 9z" />
@@ -684,5 +687,6 @@
       })();
     </script>
 
-  </body>
+  <script>if(location.protocol==='file:')document.getElementById('home').href='index.html';</script>
+</body>
 </html>
