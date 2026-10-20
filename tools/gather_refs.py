@@ -102,7 +102,7 @@ OPEN_LICENSES = {"cc0", "pd", "cc-by", "cc-by-sa"}
 
 # ---------------------------------------------------------------- http
 _last = {}
-def http_get(url, params=None, stream=False, tries=4, delay=0.6, timeout=40):
+def http_get(url, params=None, stream=False, tries=3, delay=0.6, timeout=12):
     host = urllib.parse.urlparse(url).netloc
     for i in range(tries):
         wait = _last.get(host, 0) + delay - time.time()
@@ -112,14 +112,18 @@ def http_get(url, params=None, stream=False, tries=4, delay=0.6, timeout=40):
         try:
             r = requests.get(url, params=params, headers={"User-Agent": UA}, timeout=timeout, stream=stream)
             if r.status_code == 429 or r.status_code >= 500:
-                time.sleep(float(r.headers.get("Retry-After", 5 * (i + 1))))
+                try:
+                    wait_s = min(float(r.headers.get("Retry-After", "")), 10.0)
+                except (TypeError, ValueError):
+                    wait_s = 3 * (i + 1)
+                time.sleep(max(wait_s, 0.5))
                 continue
             r.raise_for_status()
             return r
         except Exception as e:
             if i == tries - 1:
                 print(f"    gave up on {url[:90]} ({e})", file=sys.stderr)
-            time.sleep(2 * (i + 1))
+            time.sleep(0.8 * (i + 1))
     return None
 
 
