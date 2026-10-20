@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moth Forest</title>
+<style>
+:root{color-scheme:dark}
+html,body{margin:0;height:100%}
+body{display:grid;place-items:center;font:16px/1.4 -apple-system,"SF Pro Text","Segoe UI",system-ui,sans-serif;color:#fff;
+ background:radial-gradient(120% 90% at 50% 100%,#2a4a3a 0%,#122219 45%,#070d12 100%)}
+main{text-align:center;padding:24px}
+h1{margin:0 0 6px;font:700 clamp(28px,5vw,44px) ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;letter-spacing:-.01em}
+p.sub{margin:0 0 28px;opacity:.7}
+.row{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+a{display:block;width:min(260px,80vw);padding:26px 22px;border-radius:26px;color:#fff;text-decoration:none;
+ background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.35);
+ backdrop-filter:blur(18px) saturate(1.6);-webkit-backdrop-filter:blur(18px) saturate(1.6);
+ box-shadow:inset 0 1.5px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(255,255,255,.1),0 14px 40px rgba(0,0,0,.4);
+ transition:transform .2s,background .2s}
+a:hover,a:focus-visible{transform:translateY(-4px);background:linear-gradient(160deg,rgba(255,255,255,.3),rgba(255,255,255,.1));outline:none}
+a b{display:block;font-size:20px;margin:6px 0 4px}a span{font-size:13px;opacity:.75}a i{font-size:34px;font-style:normal}
+</style></head><body>
+<main>
+ <h1>Moth Forest</h1><p class="sub">Where to?</p>
+ <div class="row">
+  <a id="s" href="/screensaver"><i>🌲</i><b>Screensaver</b><span>Live forest, weather and a glass clock, with your moths wandering about.</span></a>
+  <a id="b" href="/builder"><i>🦋</i><b>Moth builder</b><span>Design a moth and export its parameters.</span></a>
+ </div>
+</main>
+<script>if(location.protocol==='file:'){document.getElementById('s').href='moth_screensaver.html';document.getElementById('b').href='moth_builder.html'}</script>
+</body></html>

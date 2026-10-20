@@ -1,0 +1,10 @@
+{
+  "rewrites": [
+    { "source": "/screensaver", "destination": "/moth_screensaver.html" },
+    { "source": "/builder", "destination": "/moth_builder.html" }
+  ],
+  "redirects": [
+    { "source": "/screensaver/", "destination": "/screensaver", "permanent": false },
+    { "source": "/builder/", "destination": "/builder", "permanent": false }
+  ]
+}
