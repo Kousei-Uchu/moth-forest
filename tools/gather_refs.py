@@ -31,6 +31,7 @@ Output (default folder reference_images/):
 """
 import argparse, csv, hashlib, io, json, os, re, shutil, sys, time, zipfile
 import urllib.parse
+import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
@@ -102,13 +103,37 @@ OPEN_LICENSES = {"cc0", "pd", "cc-by", "cc-by-sa"}
 
 # ---------------------------------------------------------------- http
 _last = {}
+_rate_shared = None
+_rate_lock = None
+
+
+def init_rate_limiter(shared_times, lock):
+    """Install a process-shared per-host request scheduler."""
+    global _rate_shared, _rate_lock
+    _rate_shared, _rate_lock = shared_times, lock
+
+
+def _reserve_request_slot(host, delay):
+    """Reserve a request time atomically across all worker processes."""
+    if _rate_shared is None or _rate_lock is None:
+        now = time.time()
+        next_slot = max(now, _last.get(host, 0.0))
+        _last[host] = next_slot + delay
+        return max(0.0, next_slot - now)
+
+    with _rate_lock:
+        now = time.time()
+        next_slot = max(now, float(_rate_shared.get(host, 0.0)))
+        _rate_shared[host] = next_slot + delay
+    return max(0.0, next_slot - time.time())
+
+
 def http_get(url, params=None, stream=False, tries=3, delay=0.6, timeout=12):
     host = urllib.parse.urlparse(url).netloc
     for i in range(tries):
-        wait = _last.get(host, 0) + delay - time.time()
+        wait = _reserve_request_slot(host, delay)
         if wait > 0:
             time.sleep(wait)
-        _last[host] = time.time()
         try:
             r = requests.get(url, params=params, headers={"User-Agent": UA}, timeout=timeout, stream=stream)
             if r.status_code == 429 or r.status_code >= 500:
@@ -517,6 +542,115 @@ def run_species(common, sci, args, clip, st):
     print("  final: " + ", ".join(f"{b} {st.count(common, b)}" for b in VIEWS))
 
 
+
+# ---------------------------------------------------------------- multiprocessing
+_WORKER_CLIP = None
+
+
+def _worker_init(device, fake_clip, shared_times, rate_lock):
+    """Each process owns one CLIP instance; HTTP pacing is shared across processes."""
+    global _WORKER_CLIP
+    init_rate_limiter(shared_times, rate_lock)
+    _WORKER_CLIP = FakeClip() if fake_clip else Clip(device)
+
+
+def _seed_species_worker(root_out, worker_out, common):
+    """Seed a persistent isolated worker directory from the existing main state."""
+    root_work = os.path.join(root_out, "_work")
+    worker_work = os.path.join(worker_out, "_work")
+    os.makedirs(worker_work, exist_ok=True)
+    worker_manifest = os.path.join(worker_work, "manifest_all.csv")
+    worker_dead = os.path.join(worker_work, "dead_urls.txt")
+
+    if os.path.exists(worker_manifest):
+        return
+
+    root_manifest = os.path.join(root_work, "manifest_all.csv")
+    rows = []
+    if os.path.exists(root_manifest):
+        with open(root_manifest, newline="", encoding="utf-8") as f:
+            rows = [r for r in csv.DictReader(f) if r.get("species") == common]
+    with open(worker_manifest, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, COLS)
+        w.writeheader()
+        w.writerows(rows)
+
+    # Copy the already-accepted images for this species so resume/deduplication works.
+    for row in rows:
+        rel = os.path.join(slug(row["species"]), row["bucket"], row["file"])
+        src = os.path.join(root_work, rel)
+        dst = os.path.join(worker_work, rel)
+        if os.path.isfile(src):
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if not os.path.exists(dst):
+                shutil.copy2(src, dst)
+
+    # Dead URLs are global in the original format; copying them is conservative and
+    # prevents repeated requests after a restart.
+    root_dead = os.path.join(root_work, "dead_urls.txt")
+    if os.path.exists(root_dead):
+        shutil.copy2(root_dead, worker_dead)
+    else:
+        open(worker_dead, "a", encoding="utf-8").close()
+
+
+def _run_species_job(job):
+    common, sci, args, root_out, worker_out = job
+    _seed_species_worker(root_out, worker_out, common)
+    worker_state = State(worker_out)
+    print(f"\n[worker pid={os.getpid()}] {common}", flush=True)
+    run_species(common, sci, args, _WORKER_CLIP, worker_state)
+    return common, worker_out
+
+
+def _merge_worker_results(root_state, root_out, results, selected_names):
+    """Merge isolated worker state into the canonical output without concurrent writes."""
+    root_work = root_state.work
+    selected = set(selected_names)
+    kept = [r for r in root_state.rows if r.get("species") not in selected]
+    dead_urls = set(root_state.seen_urls)
+
+    for common, worker_out in results:
+        worker_work = os.path.join(worker_out, "_work")
+        manifest = os.path.join(worker_work, "manifest_all.csv")
+        if os.path.exists(manifest):
+            with open(manifest, newline="", encoding="utf-8") as f:
+                kept.extend(csv.DictReader(f))
+
+        dead = os.path.join(worker_work, "dead_urls.txt")
+        if os.path.exists(dead):
+            with open(dead, encoding="utf-8") as f:
+                dead_urls.update(line.strip() for line in f if line.strip())
+
+        # Copy this worker's species images into the canonical _work tree.
+        src_species = os.path.join(worker_work, slug(common))
+        dst_species = os.path.join(root_work, slug(common))
+        if os.path.isdir(src_species):
+            if os.path.isdir(dst_species):
+                shutil.rmtree(dst_species)
+            shutil.copytree(src_species, dst_species)
+
+    root_state.rows = kept
+    root_state.seen_urls = dead_urls | {r["image_url"] for r in kept if r.get("image_url")}
+    root_state.hashes = {}
+    for row in kept:
+        image_path = os.path.join(root_work, slug(row["species"]), row["bucket"], row["file"])
+        if os.path.isfile(image_path):
+            try:
+                root_state.hashes.setdefault(row["species"], []).append(dhash(Image.open(image_path)))
+            except Exception:
+                pass
+
+    with open(root_state.path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, COLS)
+        w.writeheader()
+        w.writerows(root_state.rows)
+    with open(root_state.dead_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(sorted(dead_urls)))
+        if dead_urls:
+            f.write("\n")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--species", help="comma-separated common names (default: all)")
@@ -535,7 +669,8 @@ def main():
     ap.add_argument("--batch", type=int, default=24)
     ap.add_argument("--stall", type=int, default=3, help="give up on a source after this many consecutive batches that add nothing to a still-short view (0 = never)")
     ap.add_argument("--source-cap", type=int, default=400, help="hard cap on candidates tried per source per species (0 = no cap)")
-    ap.add_argument("--threads", type=int, default=8)
+    ap.add_argument("--threads", type=int, default=3, help="download threads per process; keep modest to avoid hammering image hosts")
+    ap.add_argument("--workers", type=int, default=4, help="parallel species worker processes (each loads its own CLIP model)")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--fake-clip", action="store_true", help="testing only: skip the model")
     args = ap.parse_args()
@@ -544,16 +679,65 @@ def main():
     for n in names:
         if n not in SPECIES:
             sys.exit(f"Unknown species '{n}'. Choose from: {', '.join(SPECIES)}")
-    clip = FakeClip() if args.fake_clip else Clip(args.device)
+    if args.workers < 1:
+        ap.error("--workers must be at least 1")
+    if args.threads < 1:
+        ap.error("--threads must be at least 1")
+
+    os.makedirs(args.out, exist_ok=True)
     st = State(args.out)
-    try:
-        for i, n in enumerate(names, 1):
-            print(f"\n[{i}/{len(names)}]", end="")
-            run_species(n, SPECIES[n], args, clip, st)
-            st.write_zips()  # after every species, so an interrupted run still leaves usable zips
-    except KeyboardInterrupt:
-        print("\nInterrupted: writing zips for what was collected so far.")
-        st.write_zips()
+    if args.workers == 1:
+        clip = FakeClip() if args.fake_clip else Clip(args.device)
+        try:
+            for i, n in enumerate(names, 1):
+                print(f"\n[{i}/{len(names)}]", end="")
+                run_species(n, SPECIES[n], args, clip, st)
+                st.write_zips()
+        except KeyboardInterrupt:
+            print("\nInterrupted: writing zips for what was collected so far.")
+            st.write_zips()
+    else:
+        # macOS uses spawn by default. Manager-backed host scheduling ensures all
+        # workers respect one shared per-host request interval.
+        worker_root = os.path.join(st.work, "mp_workers")
+        os.makedirs(worker_root, exist_ok=True)
+        jobs = []
+        for n in names:
+            worker_out = os.path.join(worker_root, slug(n))
+            jobs.append((n, SPECIES[n], args, args.out, worker_out))
+
+        # Seed workers before concurrent merging begins, avoiding races while reading
+        # the canonical manifest and preserving resume/deduplication for each species.
+        for n, _, _, _, worker_out in jobs:
+            _seed_species_worker(args.out, worker_out, n)
+
+        manager = mp.Manager()
+        shared_times = manager.dict()
+        rate_lock = manager.Lock()
+        pool = mp.Pool(
+            processes=min(args.workers, len(jobs)),
+            initializer=_worker_init,
+            initargs=(args.device, args.fake_clip, shared_times, rate_lock),
+        )
+        results = []
+        try:
+            for result in pool.imap_unordered(_run_species_job, jobs):
+                results.append(result)
+                _merge_worker_results(st, args.out, results, [x[0] for x in results])
+                st.write_zips()
+                print(f"\nMerged {result[0]} ({len(results)}/{len(jobs)} species complete).", flush=True)
+            pool.close()
+            pool.join()
+        except KeyboardInterrupt:
+            print("\nInterrupted. Stopping workers and merging completed species.", flush=True)
+            pool.terminate()
+            pool.join()
+            if results:
+                _merge_worker_results(st, args.out, results, [x[0] for x in results])
+            st.write_zips()
+        finally:
+            manager.shutdown()
+
     print("\nDone. Commit reference_images/open/ (safe licences). restricted/ and _work/ are git-ignored.")
 
 
