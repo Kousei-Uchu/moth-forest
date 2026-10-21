@@ -28,10 +28,23 @@
   const top = (C, n, min) => C.filter(c => c.w >= (min == null ? .25 : min)).sort((a, b) => b.w - a.w).slice(0, n).map(c => c.t);
 
   /* ---------------- real-world size: wingspan in millimetres ---------------- */
-  /* When the moth has no wingspan set, guess one from body bulk so the writing still has a size to work with. */
-  function estimateSpan(p) {
+  /* When the moth has no wingspan set, guess one from the traits that tend to go with size in real moths:
+     heavy bodies, hawkmoth and silk-moth builds, long tails, big eyespots and feathered antennae all point to
+     large moths; slight bodies and long thin wings point to small ones. Takes the measured traits (m). */
+  function estimateSpan(m, p) {
     const B = p.body;
-    return Math.round(clamp(28 + (B.tw - 10) * 5.5 + (B.abdLen - 38) * .35, 25, 150));
+    let mm = 40;
+    mm += m.heavy * 22;                                   // big flight muscles
+    mm += m.hawk ? 12 : 0;                                // hawkmoth build
+    mm += m.silk ? 26 : 0;                                // giant silk moth build
+    mm += m.tail * 20;                                    // long hindwing tails
+    mm += Math.min(m.eyes, 4) * 3;                        // large eyespots
+    mm += m.feather ? 6 : 0;                              // feathered antennae
+    mm += m.uran ? 36 : 0;                                // sunset-moth type: big, tailed day-flier
+    mm -= m.slight * 10;                                  // delicate body
+    mm -= (m.narrow > .6 && m.heavy < .3) ? 6 : 0;        // long thin wings on a light body
+    mm += (B.tw - 14) * 1.2;                              // thorax width as a small correction
+    return Math.round(clamp(mm, 18, 220));
   }
   /* "6.2 cm (2.4 in)" with the reader's preferred unit first */
   function fmtSpan(mm, unit) {
@@ -132,7 +145,7 @@
     m.act = activity(m);
     /* real size: the moth's own wingspan when set, otherwise an estimate that the writing admits to */
     m.spanKnown = +p.span > 0;
-    m.spanMm = m.spanKnown ? +p.span : estimateSpan(p);
+    m.spanMm = m.spanKnown ? +p.span : estimateSpan(m, p);
     m.size = nrm(m.spanMm, 25, 140);                                  // 0 tiny, 1 huge
     m.unit = 'cm';
     return m;
@@ -429,5 +442,5 @@
   }
   function toText(r) { return r.sections.map(s => s.title.toUpperCase() + '\n' + s.text).join('\n\n'); }
 
-  root.MothEcology = { describe, toText, _measure: measure, _habitat: habitat, _cname: cname, _normalise: normalise };
+  root.MothEcology = { describe, toText, estimate: raw => measure(normalise(Object.assign({}, raw, { span: 0 }))).spanMm, _measure: measure, _habitat: habitat, _cname: cname, _normalise: normalise };
 })(typeof window !== 'undefined' ? window : globalThis);

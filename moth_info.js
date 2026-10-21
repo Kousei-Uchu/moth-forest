@@ -45,7 +45,7 @@
       title: 'Wingspan: giving the moth a real size',
       body: `
         <p>The drawing is always the same size on screen, so by itself it cannot tell a pinhead-sized moth from a dinner-plate-sized one. The <b>wingspan</b> setting on the Species tab fixes that. It is the distance from one wingtip to the other, in centimetres or inches. The app picks the unit from your device language, and the unit buttons let you switch.</p>
-        <p>Named species come with a typical real wingspan. Seeded and random moths start on <b>Auto</b>, where the Ecology tab makes a rough guess from the body and says so. Type a number to replace the guess.</p>
+        <p>Named species come with a typical real wingspan. Seeded and random moths start on <b>Auto</b>. The Ecology tab then guesses a size from clues that go with size in real moths: a heavy body, long tails, big eyespots, feathered antennae, a hawkmoth or silk-moth build. Expect it to land within about a third of the true size for typical moths, and it says when it is guessing. The screensaver uses the same guess. Type a number to replace it.</p>
         <p>Size matters more than it looks: it changes how a moth warms up, how far it travels and how big a caterpillar it must have been. See the next section.</p>`
     },
     {
