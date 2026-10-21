@@ -1283,9 +1283,10 @@
             hw: wingSVG(hs, H, id + "h" + s, org, mk(6), mk(13 + s), rig ? "hind" : undefined),
           };
         });
-        const m = [
-            [0.92, 0.2, 0, 0.6],
-            [0.92, 0.15, 0, 0.58],
+        const pt = Math.min(1, Math.max(0, F.pitch || 0)), // 0 = default, 1 = wings raised and held back over the body (never dipping below the legs)
+          m = [
+            [0.94, 0.2 - 0.3 * pt, 0, 0.58],
+            [0.94, 0.15 - 0.3 * pt, 0, 0.56],
           ],
           fpos = [
             [-tl * 0.45, -tw * 0.7],
@@ -2110,13 +2111,14 @@
       const MOTHS = {
         "Rosy maple moth": {
           fore: {
-            chord: 56,
+            chord: 38.8,
             sweep: 0.1,
+            len: 95.4,
             bulge: 0.3,
             tx: 0.82,
-            costal: 0.2,
-            apex: -0.5,
-            tornus: -0.4,
+            costal: -0.15,
+            apex: 0.2,
+            tornus: -0.77,
             base: "#ec7fa5",
             edge: "#c25a82",
             fringe: { on: false, len: 0.5, c: "#f6c3d3" },
@@ -2412,7 +2414,7 @@
             tx: 0.84,
             base: "#f5f2ea",
             edge: "#2a2a33",
-            speck: SK(22, 0.03, "#1f3550", "#111111"),
+            speck: SK(34, 0.04, "#f5f2ea", "#1f2a40"),
           },
           hind: {
             len: 66,
@@ -2420,7 +2422,7 @@
             tilt: 12,
             base: "#f5f2ea",
             edge: "#2a2a33",
-            speck: SK(12, 0.03, "#1f3550", "#111111"),
+            speck: SK(20, 0.04, "#f5f2ea", "#1f2a40"),
           },
           body: {
             tw: 15,
@@ -2447,13 +2449,13 @@
             tx: 0.82,
             apex: 0.2,
             tornus: 0.1,
-            base: "#ece7da",
+            base: "#d9d5ca",
             edge: "#5a5750",
             bands: [
               bd(0.3, 0.025, "#2d2c2a", 0.1, 6, 11),
               bd(0.66, 0.025, "#2d2c2a", 0.1, 6, 11),
             ],
-            speck: SK(110, 0.012, "#2d2c2a"),
+            speck: SK(260, 0.014, "#2d2c2a"),
           },
           hind: {
             len: 62,
@@ -2461,7 +2463,7 @@
             base: "#e8e3d6",
             edge: "#5a5750",
             bands: [bd(0.6, 0.02, "#2d2c2a", 0, 5, 12)],
-            speck: SK(50, 0.012, "#2d2c2a"),
+            speck: SK(130, 0.014, "#2d2c2a"),
           },
           body: {
             tw: 13,
@@ -2560,15 +2562,18 @@
             bulge: 0.3,
             tx: 0.82,
             apex: -0.1,
-            base: "#f4eddb",
-            edge: "#6b4a2c",
+            base: "#5e3418",
+            edge: "#3a2010",
             fringe: { on: false, len: 0.5, c: "#8a5a34" },
+            bands: [
+              bd(0.2, 0.05, "#f4eddb", 0.5, 6, 8, 0.07),
+              bd(0.46, 0.05, "#f4eddb", -0.4, 7, 8, 0.08),
+              bd(0.72, 0.045, "#f4eddb", 0.4, 6, 8, 0.06),
+            ],
             spots: [
-              sp(0.25, 0.32, 0.09, 0.14, "#6a3d1f", "", 1, 20),
-              sp(0.5, 0.22, 0.08, 0.12, "#5a3318", "", 1, -10),
-              sp(0.72, 0.4, 0.09, 0.15, "#6a3d1f", "", 1, 30),
-              sp(0.45, 0.62, 0.1, 0.11, "#5a3318"),
-              sp(0.85, 0.75, 0.07, 0.09, "#6a3d1f"),
+              sp(0.33, 0.22, 0.07, 0.09, "#f4eddb"),
+              sp(0.6, 0.7, 0.08, 0.1, "#f4eddb"),
+              sp(0.88, 0.35, 0.06, 0.1, "#f4eddb"),
             ],
           },
           hind: {
@@ -2685,14 +2690,14 @@
             apex: -0.2,
             base: "#bdb9b0",
             edge: "#8a8478",
-            grad: { on: true, c: "#e6cf8c" },
+            grad: { on: false, c: "#e6cf8c" },
             fringe: { on: false, len: 0.5, c: "#e6cf8c" },
             bands: [
               bd(0.3, 0.012, "#7a756b", 0.08, 2, 9),
               bd(0.5, 0.012, "#7a756b", 0.08, 2, 9),
               bd(0.68, 0.012, "#7a756b", 0.08, 2, 9),
             ],
-            spots: [sp(0.45, 0.38, 0.03, 0.05, "#d9d2c0", "#7a756b")],
+            spots: [sp(0.93, 0.3, 0.13, 0.22, "#f0d98e", "#8a6a3a", 1, 10), sp(0.45, 0.38, 0.03, 0.05, "#d9d2c0", "#7a756b")],
           },
           hind: {
             len: 58,
@@ -2714,21 +2719,21 @@
       };
       /* ---- reference-photo pass: swept triangular forewings, woolly thorax, bigger eyes, soft fringe ---- */
       const FIX = {
-        "Rosy maple moth": { f: [16, 0.5], sh: 0.9, ant: ["feather", "#b9773f"], fr: "#f2b5cc" },
-        "Luna moth": { f: [12, 0.2, 0.3], sh: 0.6, fr: "#e6f2cf", tail: [58, 5.5] },
+        "Rosy maple moth": { pitch: 0.6, f: [16, 0.5, 0.2], sh: 0.9, ant: ["feather", "#b9773f"], fr: "#f2b5cc" },
+        "Luna moth": { f: [12, 0.2, 0.3], sh: 0.6, fr: "#e6f2cf", tail: [58, 5.5], tailPos: 0.3 },
         "Atlas moth": { f: [10, 0.3, -0.35], sh: 0.7, fr: "#e8c9a0", lobe: 0.85 },
         "Polyphemus moth": { f: [14, 0.35], sh: 0.7, fr: "#e8cfa0" },
         "Io moth": { f: [14, 0.3], sh: 0.7, fr: "#f0d890" },
-        "Cinnabar moth": { f: [26, 0.6, 0.5], hind: [62, 42, 0.2], sh: 0.5, fr: "#2a2430" },
+        "Cinnabar moth": { pitch: 0.9, f: [26, 0.6, 0.5], hind: [62, 42, 0.2], sh: 0.5, fr: "#2a2430" },
         "Sunset moth": { f: [10, 0.2], sh: 0.3, fr: "#f4f0e6", flen: 0.7, hindTeeth: [6, 2.6], tail: [28, 4] },
-        "Giant leopard moth": { f: [16, 0.3], sh: 0.7, fr: "#f4f0e6", thorax: ["#f4f1ea", "#1f3f9a"] },
-        "Peppered moth": { f: [16, 0.4], sh: 0.6, fr: "#e8e4dc" },
-        "Death’s-head hawkmoth": { f: [26, 0.65, 0.6], hind: [60, 40, 0.2], sh: 0.9, abd: [92, 0.85], ant: ["club", "#2a2420"], fr: "#c9b890" },
-        "Elephant hawkmoth": { f: [30, 0.75, 0.8], hind: [58, 38, 0.2], sh: 0.9, abd: [96, 0.8], ant: ["club", "#f2e4e8"], fr: "#f6d7e2" },
-        "Garden tiger moth": { f: [16, 0.35], sh: 0.9, hl: [72, 58], fr: "#f4ead0" },
+        "Giant leopard moth": { pitch: 0.7, f: [16, 0.3], sh: 0.7, fr: "#f4f0e6", thorax: ["#f4f1ea", "#1f3f9a"] },
+        "Peppered moth": { pitch: 0.3, f: [16, 0.4], sh: 0.6, fr: "#e8e4dc" },
+        "Death’s-head hawkmoth": { pitch: 0.6, f: [26, 0.65, 0.6], hind: [60, 40, 0.2], sh: 0.9, abd: [92, 0.85], ant: ["club", "#2a2420"], fr: "#c9b890" },
+        "Elephant hawkmoth": { pitch: 0.7, f: [30, 0.75, 0.8], hind: [58, 38, 0.2], sh: 0.9, abd: [96, 0.8], ant: ["club", "#f2e4e8"], fr: "#f6d7e2" },
+        "Garden tiger moth": { pitch: 0.5, f: [16, 0.35], sh: 0.9, hl: [72, 58], fr: "#f4ead0" },
         "Imperial moth": { f: [14, 0.3], sh: 0.8, fr: "#f2e6a0" },
         "Cecropia moth": { f: [14, 0.3], sh: 0.8, fr: "#f0e6d8" },
-        "Buff-tip moth": { f: [18, 0.35], sh: 0.7, fr: "#d8c0a0" },
+        "Buff-tip moth": { pitch: 0.8, f: [18, 0.35], sh: 0.9, fr: "#d8c0a0", thorax: ["#ead9a0"] },
       };
       for (const [n, x] of Object.entries(FIX)) {
         const m = MOTHS[n];
@@ -2747,13 +2752,14 @@
           b.abdLen = x.abd[0];
           b.abdW = Math.min(b.tw * 0.95, x.abd[1] * b.tw);
         }
-        if (x.tail !== undefined) m.hind = { ...m.hind, tail: x.tail[0], tw: x.tail[1] };
+        if (x.tail !== undefined) m.hind = { ...m.hind, tail: x.tail[0], tw: x.tail[1], ...(x.tailPos ? { tailPos: x.tailPos } : {}) };
         if (x.hl) m.hind = { ...m.hind, len: x.hl[0], chord: x.hl[1] };
         if (x.lobe) m.fore.lobe = x.lobe;
+        if (x.pitch) m.fore.pitch = x.pitch;
         if (x.hindTeeth) m.hind = { ...m.hind, teeth: x.hindTeeth[0], tooth: x.hindTeeth[1] };
         if (x.thorax) {
           b.thoraxColor = x.thorax[0];
-          b.mark = { on: true, c: x.thorax[1] };
+          if (x.thorax[1]) b.mark = { on: true, c: x.thorax[1] };
         }
         if (x.ant) m.antenna = { ...m.antenna, type: x.ant[0], color: x.ant[1] };
       }
