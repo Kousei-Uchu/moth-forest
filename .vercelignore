@@ -1,0 +1,5 @@
+# Keep dev-only material out of the deployed site
+reference_images
+skills
+tools
+__pycache__
